@@ -1,0 +1,100 @@
+<div class="container" style="max-width: 600px;">
+  <h1 class="mb-4"><%= license._id ? 'Chỉnh sửa License Key' : 'Tạo License Key' %></h1>
+  <div class="card">
+    <div class="card-body">
+      <form id="licenseForm" method="POST" action="<%= license._id ? `/admin/license-keys/${license._id}` : '/admin/license-keys' %>">
+        <% if (license._id) { %><input type="hidden" name="_method" value="PUT"><% } %>
+        <div class="row g-2">
+          <div class="col-md-8">
+            <label for="key" class="form-label">Key (Mỗi key 1 dòng)</label>
+            <textarea class="form-control" id="key" name="key" rows="4" required><%= license.key || '' %></textarea>
+          </div>
+          <div class="col-md-4 d-grid">
+            <label class="form-label">&nbsp;</label>
+            <button type="button" class="btn btn-outline-secondary" id="genKey">Tạo ngẫu nhiên</button>
+          </div>
+          <div class="col-md-6">
+            <label for="expiresAt" class="form-label">Ngày hết hạn</label>
+            <input type="date" class="form-control" id="expiresAt" name="expiresAt" value="<%= license.expiresAt ? new Date(license.expiresAt).toISOString().split('T')[0] : '' %>" required>
+          </div>
+          <div class="col-md-6">
+            <label for="roles" class="form-label">Roles</label>
+            <input type="text" class="form-control" id="roles" name="roles" placeholder="admin,user" value="<%= (license.roles || []).join(', ') %>">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Quyền tool</label>
+            <div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="check_product" name="check_product" <%= license.scopes && license.scopes.check_product ? 'checked' : '' %>>
+                <label class="form-check-label" for="check_product">check_product</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="create_video" name="create_video" <%= license.scopes && license.scopes.create_video ? 'checked' : '' %>>
+                <label class="form-check-label" for="create_video">create_video</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="upload_video" name="upload_video" <%= license.scopes && license.scopes.upload_video ? 'checked' : '' %>>
+                <label class="form-check-label" for="upload_video">upload_video</label>
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <label for="note" class="form-label">Ghi chú</label>
+            <textarea class="form-control" id="note" name="note" rows="2"><%= license.note || '' %></textarea>
+          </div>
+          <% if (license._id) { %>
+          <div class="col-12">
+            <button type="button" class="btn btn-sm btn-outline-primary mb-2" id="togglePub">Xem/Ẩn Public Key</button>
+            <textarea class="form-control d-none" id="public_key" rows="6" readonly><%= license.public_key %></textarea>
+          </div>
+          <% } %>
+        </div>
+        <div class="d-flex justify-content-between mt-3">
+          <a href="/admin/license-keys" class="btn btn-secondary">Hủy</a>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('licenseForm');
+    const genBtn = document.getElementById('genKey');
+    const keyInput = document.getElementById('key');
+    const togglePub = document.getElementById('togglePub');
+    const pubArea = document.getElementById('public_key');
+    if (togglePub && pubArea) {
+      togglePub.addEventListener('click', function() {
+        pubArea.classList.toggle('d-none');
+      });
+    }
+    genBtn.addEventListener('click', function() {
+      const rand = ([...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('')).match(/.{1,4}/g).join('-');
+      keyInput.value = rand.toUpperCase();
+    });
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const data = Object.fromEntries(fd.entries());
+      data.check_product = fd.has('check_product');
+      data.create_video = fd.has('create_video');
+      data.upload_video = fd.has('upload_video');
+      const method = fd.get('_method') === 'PUT' ? 'PUT' : 'POST';
+      fetch(form.getAttribute('action'), {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(r => r.json()).then(d => {
+        if (d.success) {
+          alert(d.message);
+          window.location.href = '/admin/license-keys';
+        } else {
+          alert('Lỗi: ' + d.message);
+        }
+      }).catch(err => {
+        alert('Đã xảy ra lỗi khi lưu license');
+      });
+    });
+  });
+</script>

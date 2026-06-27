@@ -1,0 +1,881 @@
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Accounts Upload Video</h1>
+    <form method="GET" action="/shopee-accounts/upload-video" class="d-flex" style="max-width: 320px;">
+      <input type="text" class="form-control form-control-sm me-2" name="search" value="<%= search || '' %>"
+        placeholder="Tìm theo username">
+      <button class="btn btn-sm btn-primary" type="submit">Tìm</button>
+    </form>
+  </div>
+  <div class="d-flex gap-2 mb-2">
+    <button class="btn btn-sm btn-info" id="addAccountByCookieBtn">Thêm Account</button>
+    <button class="btn btn-sm btn-warning" id="updateCookieByInputBtn">Update Cookie Live</button>
+    <button class="btn btn-sm btn-danger" id="deleteSelectedBtn" disabled>Xóa selected</button>
+    <button class="btn btn-sm btn-success" id="enableUploadSelectedBtn" disabled>Enable Is Upload API</button>
+    <button class="btn btn-sm btn-secondary" id="disableUploadSelectedBtn" disabled>Disable Is Upload API</button>
+    <button class="btn btn-sm btn-primary" id="setMaxDailyVideosBtn" disabled>Set Max Daily Videos</button>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-9">
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="text-center"><input type="checkbox" id="selectAllAccounts"></th>
+              <th>STT</th>
+              <th>Username</th>
+              <th>User ID</th>
+              <th>Cookie Live</th>
+              <th>Time Update Cookie</th>
+              <th>Is Upload API</th>
+              <th>Videos Uploaded</th>
+              <th>Daly Videos Uploaded</th>
+              <th>Max Daly</th>
+              <th>Error Upload</th>
+              <th>Trạng thái Upload</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (accounts && accounts.length) { %>
+              <% accounts.forEach((account,index) => { %>
+                <tr>
+                  
+                  <td class="text-center">
+                    <input class="form-check-input account-checkbox" type="checkbox" value="<%= account._id %>">
+                  </td>
+                  <td class="text-center"><%= index+1 %></td>
+                  <td>
+                    <%= account.username || '-' %>
+                  </td>
+                  <td><code><%= account.user_id || '-' %></code></td>
+                  <td>
+                    <% if (account.cookie_live) { %>
+                      <span class="badge bg-success">Đã có</span>
+                      <% } else { %>
+                        <span class="badge bg-secondary">Trống</span>
+                        <% } %>
+                  </td>
+                  <% const rawTimeUpdateCookie=account.time_update_cookie; let cookieUpdateDate=null; if
+                    (rawTimeUpdateCookie !==null && rawTimeUpdateCookie !==undefined && rawTimeUpdateCookie !=='' ) {
+                    const numericTimestamp=Number(rawTimeUpdateCookie); if (!Number.isNaN(numericTimestamp)) {
+                    cookieUpdateDate=new Date(numericTimestamp> 9999999999 ? numericTimestamp : numericTimestamp *
+                    1000);
+                    } else {
+                    cookieUpdateDate = new Date(rawTimeUpdateCookie);
+                    }
+                    }
+                    const isValidCookieUpdateDate = cookieUpdateDate && !Number.isNaN(cookieUpdateDate.getTime());
+                    const isCookieUpdateWithinOneHour = isValidCookieUpdateDate && ((Date.now() -
+                    cookieUpdateDate.getTime()) <= 60 * 60 * 1000); const
+                      isCookieUpdateOlderThanOneDay=isValidCookieUpdateDate && ((Date.now() -
+                      cookieUpdateDate.getTime())> 24 * 60 * 60 * 1000);
+                      const displayedTimeUpdateCookie = isValidCookieUpdateDate
+                      ? `${String(cookieUpdateDate.getHours()).padStart(2,
+                      '0')}:${String(cookieUpdateDate.getMinutes()).padStart(2,
+                      '0')}:${String(cookieUpdateDate.getSeconds()).padStart(2, '0')}
+                      ${String(cookieUpdateDate.getDate()).padStart(2, '0')}/${String(cookieUpdateDate.getMonth() +
+                      1).padStart(2, '0')}/${cookieUpdateDate.getFullYear()}`
+                      : (rawTimeUpdateCookie || '-');
+                      %>
+                      <td id="time-update-cookie-<%= account._id %>"
+                        class="<%= isCookieUpdateWithinOneHour ? 'text-success fw-bold' : (isCookieUpdateOlderThanOneDay ? 'text-danger fw-bold' : '') %>">
+                        <%= displayedTimeUpdateCookie %>
+                      </td>
+                      <td>
+
+                        <div class="form-check form-switch mt-1">
+                          <input class="form-check-input toggle-is-upload-api" type="checkbox"
+                            data-id="<%= account._id %>" <%=account.is_upload_api ? 'checked' : '' %>
+                          >
+                          <span id="upload-api-status-<%= account._id %>"
+                            class="badge <%= account.is_upload_api ? 'bg-success' : 'bg-danger' %>">
+                            <%= account.is_upload_api ? 'allow upload' : 'disable' %>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <span id="total-videos-value-<%= account._id %>">
+                          <%= Number(account.totalVideosUploaded || 0).toLocaleString('vi-VN') %>
+                        </span>
+                      </td>
+                      <td id="daily-videos-cell-<%= account._id %>" data-max-daily="<%= Number(account.maxDalyVideosUploaded || 0) %>">
+                        <%
+                          const rawLastUploadTime = account.last_upload_time;
+                          let lastUploadDate = null;
+                          if (rawLastUploadTime !== null && rawLastUploadTime !== undefined && rawLastUploadTime !== '') {
+                            const numericLastUpload = Number(rawLastUploadTime);
+                            if (!Number.isNaN(numericLastUpload)) {
+                              lastUploadDate = new Date(numericLastUpload > 9999999999 ? numericLastUpload : numericLastUpload * 1000);
+                            } else {
+                              lastUploadDate = new Date(rawLastUploadTime);
+                            }
+                          }
+                          const isValidLastUploadDate = lastUploadDate && !Number.isNaN(lastUploadDate.getTime());
+                          const nowDate = new Date();
+                          const isLastUploadOldDay = isValidLastUploadDate && (
+                            lastUploadDate.getFullYear() !== nowDate.getFullYear() ||
+                            lastUploadDate.getMonth() !== nowDate.getMonth() ||
+                            lastUploadDate.getDate() !== nowDate.getDate()
+                          );
+                          const displayedLastUploadDate = isValidLastUploadDate
+                            ? `${String(lastUploadDate.getDate()).padStart(2, '0')}/${String(lastUploadDate.getMonth() + 1).padStart(2, '0')}/${lastUploadDate.getFullYear()}`
+                            : '---';
+                          const dailyVideosValue = Number(account.dalyVideosUploaded || 0);
+                          const maxDailyVideosValue = Number(account.maxDalyVideosUploaded || 0);
+                          const isReachedMaxDaily = maxDailyVideosValue > 0 && dailyVideosValue >= maxDailyVideosValue;
+                        %>
+                        <span id="daily-videos-value-<%= account._id %>" class="<%= isLastUploadOldDay ? 'text-danger fw-bold' : (isReachedMaxDaily ? 'text-success fw-bold' : '') %>">
+                          <%= dailyVideosValue.toLocaleString('vi-VN') %> (<%= displayedLastUploadDate %>)
+                        </span>
+                      </td>
+                      <td>
+                        <%= Number(account.maxDalyVideosUploaded || 0).toLocaleString('vi-VN') %>
+                      </td>
+                      <td>
+                        <span id="error-upload-value-<%= account._id %>">
+                          <%= Number(account.number_error_upload || 0).toLocaleString('vi-VN') %>
+                        </span>
+                      </td>
+                      <td>
+                        <span id="last-status-upload-value-<%= account._id %>" class="<%= account.last_status_upload && account.last_status_upload.toLowerCase().includes('thành công') ? 'text-success fw-bold' : '' %>">
+                          <%= account.last_status_upload || '----' %>
+                        </span>
+                      </td>
+                      <td>
+                        <div class="d-flex gap-1">
+                          <button type="button" class="btn btn-sm btn-outline-primary view-logs-btn"
+                            data-user-id="<%= account.user_id || '' %>" data-username="<%= account.username || '' %>">
+                            <i class="fas fa-list"></i> Logs
+                          </button>
+                        </div>
+                      </td>
+                </tr>
+                <% }) %>
+                  <% } else { %>
+                    <tr>
+                      <td colspan="13" class="text-center text-muted py-4">Không có dữ liệu</td>
+                    </tr>
+                    <% } %>
+          </tbody>
+        </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Trạng thái hệ thống</strong>
+          <span id="realtimeSocketStatus" class="badge bg-secondary">disconnected</span>
+        </div>
+        <div class="card-body p-0" style="background: #0f1115;">
+          <div id="realtimeLogPanel" style="max-height: 980px; overflow-y: auto; background: #0f1115; color: #d6d6d6; font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: 700;" class="p-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Thêm Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="addAccountFeedback" class="alert d-none mb-3" role="alert"></div>
+        <div class="mb-3">
+          <label for="addAccountUsernameInput" class="form-label">Username</label>
+          <input id="addAccountUsernameInput" type="text" class="form-control" placeholder="Nhập username">
+        </div>
+        <div class="mb-0">
+          <label for="addAccountCookieInput" class="form-label">Cookie Live</label>
+          <textarea id="addAccountCookieInput" class="form-control" rows="5" placeholder="Dán cookie vào đây..."></textarea>
+          <small class="text-muted">Hệ thống sẽ tự parse `SPC_U` để lấy `user_id`.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" id="submitAddAccountBtn">Thêm Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="accountLogsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content" style="min-height: 80vh; padding: 20px;">
+      <div class="modal-header">
+        <h5 class="modal-title">Logs - <span id="accountLogsModalTitle">-</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="d-flex justify-content-end p-2 border-bottom">
+          <button class="btn btn-sm btn-outline-secondary" id="refreshAccountLogsBtn">Refresh</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover mb-0" id="apiLogsTable">
+            <thead class="table-light">
+              <tr>
+                <th>Time</th>
+                <th>Username</th>
+                <th>Status</th>
+                <th style="width: 45%;">Message</th>
+                <th>Job ID</th>
+                <th>Post Link</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="7" class="text-center text-muted py-3">Chọn account để xem log</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const toggles = document.querySelectorAll('.toggle-is-upload-api');
+    const updateCookieByInputBtn = document.getElementById('updateCookieByInputBtn');
+    const addAccountByCookieBtn = document.getElementById('addAccountByCookieBtn');
+    const addAccountModalElement = document.getElementById('addAccountModal');
+    const addAccountModal = addAccountModalElement ? new bootstrap.Modal(addAccountModalElement) : null;
+    const addAccountUsernameInput = document.getElementById('addAccountUsernameInput');
+    const addAccountCookieInput = document.getElementById('addAccountCookieInput');
+    const addAccountFeedback = document.getElementById('addAccountFeedback');
+    const submitAddAccountBtn = document.getElementById('submitAddAccountBtn');
+    const viewLogsButtons = document.querySelectorAll('.view-logs-btn');
+    const selectAllAccounts = document.getElementById('selectAllAccounts');
+    const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    const enableUploadSelectedBtn = document.getElementById('enableUploadSelectedBtn');
+    const disableUploadSelectedBtn = document.getElementById('disableUploadSelectedBtn');
+    const setMaxDailyVideosBtn = document.getElementById('setMaxDailyVideosBtn');
+    const refreshAccountLogsBtn = document.getElementById('refreshAccountLogsBtn');
+    const accountLogsModalTitle = document.getElementById('accountLogsModalTitle');
+    const accountLogsModalElement = document.getElementById('accountLogsModal');
+    const accountLogsModal = accountLogsModalElement ? new bootstrap.Modal(accountLogsModalElement) : null;
+    const realtimeLogPanel = document.getElementById('realtimeLogPanel');
+    const realtimeSocketStatus = document.getElementById('realtimeSocketStatus');
+    let currentLogsUserId = '';
+    let currentLogsUsername = '';
+
+    function setAddAccountFeedback(message, type) {
+      if (!addAccountFeedback) {
+        return;
+      }
+      if (!message) {
+        addAccountFeedback.className = 'alert d-none mb-3';
+        addAccountFeedback.textContent = '';
+        return;
+      }
+      const alertType = type || 'danger';
+      addAccountFeedback.className = `alert alert-${alertType} mb-3`;
+      addAccountFeedback.textContent = message;
+    }
+
+    function formatRealtimeTime(value) {
+      const date = value ? new Date(value) : new Date();
+      if (Number.isNaN(date.getTime())) {
+        return '--:--:--';
+      }
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+    }
+
+    function formatDateOnly(value) {
+      const date = value ? new Date(value) : null;
+      if (!date || Number.isNaN(date.getTime())) {
+        return '---';
+      }
+      return `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
+    }
+
+    function statusClassByValue(status) {
+      const value = (status || '').toString().toLowerCase();
+      if (['success', 'ok', 'uploaded', 'done', 'video_uploaded'].includes(value)) {
+        return 'text-success';
+      }
+      if (['warning', 'warn'].includes(value)) {
+        return 'text-warning';
+      }
+      if (['error', 'failed', 'fail', 'cookie_expired', 'account_banned', 'upload_rate_limit'].includes(value)) {
+        return 'text-danger';
+      }
+      return 'text-info';
+    }
+
+    function appendRealtimeLog(logItem) {
+      if (!realtimeLogPanel) {
+        return;
+      }
+      const wrapper = document.createElement('div');
+      wrapper.className = `small ${statusClassByValue(logItem.status)} mb-1`;
+      const username = logItem.username || '-';
+      const message = logItem.message || '-';
+      const timeText = formatRealtimeTime(logItem.time || new Date());
+      wrapper.textContent = `[${timeText}] [${username}] ${message}`;
+      realtimeLogPanel.prepend(wrapper);
+      const maxRows = 200;
+      while (realtimeLogPanel.children.length > maxRows) {
+        realtimeLogPanel.removeChild(realtimeLogPanel.lastChild);
+      }
+    }
+
+    function updateDailyVideosCellRealtime(payload) {
+      if (!payload || !payload.account_id) {
+        return;
+      }
+      const target = document.getElementById(`daily-videos-value-${payload.account_id}`);
+      if (!target) {
+        return;
+      }
+
+      const dailyVideosValue = Number(payload.dalyVideosUploaded || 0);
+      const maxDailyVideosValue = Number(payload.maxDalyVideosUploaded || 0);
+      const lastUploadDate = payload.last_upload_time ? new Date(payload.last_upload_time) : null;
+      const isValidLastUploadDate = lastUploadDate && !Number.isNaN(lastUploadDate.getTime());
+      const nowDate = new Date();
+      const isLastUploadOldDay = isValidLastUploadDate && (
+        lastUploadDate.getFullYear() !== nowDate.getFullYear() ||
+        lastUploadDate.getMonth() !== nowDate.getMonth() ||
+        lastUploadDate.getDate() !== nowDate.getDate()
+      );
+      const isReachedMaxDaily = maxDailyVideosValue > 0 && dailyVideosValue >= maxDailyVideosValue;
+
+      target.className = isLastUploadOldDay
+        ? 'text-danger fw-bold'
+        : (isReachedMaxDaily ? 'text-success fw-bold' : '');
+      target.textContent = `${dailyVideosValue.toLocaleString('vi-VN')} (${formatDateOnly(payload.last_upload_time)})`;
+
+      const errorTarget = document.getElementById(`error-upload-value-${payload.account_id}`);
+      if (errorTarget) {
+        errorTarget.textContent = Number(payload.number_error_upload || 0).toLocaleString('vi-VN');
+      }
+
+      const totalTarget = document.getElementById(`total-videos-value-${payload.account_id}`);
+      if (totalTarget) {
+        totalTarget.textContent = Number(payload.totalVideosUploaded || 0).toLocaleString('vi-VN');
+      }
+
+      const statusTarget = document.getElementById(`last-status-upload-value-${payload.account_id}`);
+      if (statusTarget) {
+        const statusText = payload.last_status_upload || '----';
+        statusTarget.textContent = statusText;
+        if (statusText.toString().toLowerCase().includes('thành công')) {
+          statusTarget.classList.add('text-success', 'fw-bold');
+        } else {
+          statusTarget.classList.remove('text-success', 'fw-bold');
+        }
+      }
+      //#region payload.is_upload_api
+      if (Object.prototype.hasOwnProperty.call(payload, 'is_upload_api')) {
+        updateUploadApiState(payload.account_id, payload.is_upload_api);
+      }
+      //#endregion
+    }
+
+    function updateUploadApiState(accountId, isUploadApi) {
+      const enabled = !!isUploadApi;
+
+      const toggleTarget = document.querySelector(`.toggle-is-upload-api[data-id="${accountId}"]`);
+      if (toggleTarget) {
+        toggleTarget.checked = enabled;
+      }
+
+      const badgeTarget = document.getElementById(`upload-api-status-${accountId}`);
+      if (!badgeTarget) {
+        return;
+      }
+      if (enabled) {
+        badgeTarget.textContent = 'allow upload';
+        badgeTarget.classList.remove('bg-danger');
+        badgeTarget.classList.add('bg-success');
+      } else {
+        badgeTarget.textContent = 'disable';
+        badgeTarget.classList.remove('bg-success');
+        badgeTarget.classList.add('bg-danger');
+      }
+    }
+
+    function connectRealtimeUploadLogs() {
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const socketUrl = `${protocol}://${window.location.host}/ws/upload-logs`;
+      const socket = new WebSocket(socketUrl);
+
+      socket.addEventListener('open', function () {
+        if (realtimeSocketStatus) {
+          realtimeSocketStatus.textContent = 'connected';
+          realtimeSocketStatus.classList.remove('bg-secondary', 'bg-danger');
+          realtimeSocketStatus.classList.add('bg-success');
+        }
+      });
+
+      socket.addEventListener('message', function (event) {
+        try {
+          const parsed = JSON.parse(event.data);
+          if (parsed && parsed.type === 'upload_log' && parsed.payload) {
+            appendRealtimeLog(parsed.payload);
+          }
+          if (parsed && parsed.type === 'account_upload_update' && parsed.payload) {
+            updateDailyVideosCellRealtime(parsed.payload);
+          }
+        } catch (error) {
+        }
+      });
+
+      socket.addEventListener('close', function () {
+        if (realtimeSocketStatus) {
+          realtimeSocketStatus.textContent = 'disconnected';
+          realtimeSocketStatus.classList.remove('bg-success');
+          realtimeSocketStatus.classList.add('bg-danger');
+        }
+        setTimeout(connectRealtimeUploadLogs, 2000);
+      });
+
+      socket.addEventListener('error', function () {
+        socket.close();
+      });
+    }
+
+    function getSelectedAccountIds() {
+      return Array.from(document.querySelectorAll('.account-checkbox:checked')).map(el => el.value);
+    }
+
+    function updateSelectedState() {
+      const total = accountCheckboxes.length;
+      const checked = document.querySelectorAll('.account-checkbox:checked').length;
+      const hasSelection = checked > 0;
+      deleteSelectedBtn.disabled = !hasSelection;
+      enableUploadSelectedBtn.disabled = !hasSelection;
+      disableUploadSelectedBtn.disabled = !hasSelection;
+      setMaxDailyVideosBtn.disabled = !hasSelection;
+      if (selectAllAccounts) {
+        selectAllAccounts.checked = total > 0 && checked === total;
+        selectAllAccounts.indeterminate = checked > 0 && checked < total;
+      }
+    }
+
+    if (selectAllAccounts) {
+      selectAllAccounts.addEventListener('change', function () {
+        accountCheckboxes.forEach(cb => {
+          cb.checked = this.checked;
+        });
+        updateSelectedState();
+      });
+    }
+
+    accountCheckboxes.forEach(cb => {
+      cb.addEventListener('change', updateSelectedState);
+    });
+
+    toggles.forEach(toggle => {
+      toggle.addEventListener('change', async function () {
+        const accountId = this.getAttribute('data-id');
+        const enabled = this.checked;
+        this.disabled = true;
+        try {
+          const response = await fetch(`/shopee-accounts/upload-video/${accountId}/toggle-upload-api`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled })
+          });
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.message || 'Update failed');
+          }
+          updateUploadApiState(accountId, result.is_upload_api);
+        } catch (error) {
+          this.checked = !enabled;
+          Swal.fire({
+            title: 'Lỗi',
+            text: 'Không cập nhật được is_upload_api',
+            icon: 'error'
+          });
+        } finally {
+          this.disabled = false;
+        }
+      });
+    });
+
+    if (updateCookieByInputBtn) {
+      updateCookieByInputBtn.addEventListener('click', async function () {
+        const inputResult = await Swal.fire({
+          title: 'Update Cookie Live',
+          input: 'textarea',
+          inputLabel: 'Nhập cookie_live mới',
+          inputPlaceholder: 'Dán cookie_live tại đây...',
+          inputAttributes: {
+            autocapitalize: 'off'
+          },
+          showCancelButton: true,
+          confirmButtonText: 'Cập nhật',
+          cancelButtonText: 'Hủy'
+        });
+
+        if (!inputResult.isConfirmed) {
+          return;
+        }
+
+        const cookieLive = (inputResult.value || '').trim();
+        if (!cookieLive) {
+          await Swal.fire({
+            title: 'Thiếu dữ liệu',
+            text: 'cookie_live không được để trống',
+            icon: 'warning'
+          });
+          return;
+        }
+
+        const userId = cookieLive.match(/SPC_U=(\d+)/)?.[1];
+        if (!userId) {
+          await Swal.fire({
+            title: 'Không parse được user_id',
+            text: 'Cookie không có SPC_U hợp lệ',
+            icon: 'warning'
+          });
+          return;
+        }
+
+        updateCookieByInputBtn.disabled = true;
+        try {
+          const response = await fetch('/shopee-accounts/upload-video/update-cookie-live-by-user-id', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId, cookie_live: cookieLive })
+          });
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.message || 'Update failed');
+          }
+          await Swal.fire({
+            title: 'Thành công',
+            text: `Đã cập nhật cookie cho ${result.account?.username || userId}`,
+            icon: 'success',
+            timer: 1400,
+            showConfirmButton: false
+          });
+          window.location.reload();
+        } catch (error) {
+          await Swal.fire({
+            title: 'Lỗi',
+            text: error.message || 'Không cập nhật được cookie_live',
+            icon: 'error'
+          });
+        } finally {
+          updateCookieByInputBtn.disabled = false;
+        }
+      });
+    }
+
+    if (addAccountByCookieBtn) {
+      addAccountByCookieBtn.addEventListener('click', function () {
+        if (addAccountUsernameInput) addAccountUsernameInput.value = '';
+        if (addAccountCookieInput) addAccountCookieInput.value = '';
+        setAddAccountFeedback('');
+        if (addAccountModal) {
+          addAccountModal.show();
+        }
+      });
+    }
+
+    if (submitAddAccountBtn) {
+      submitAddAccountBtn.addEventListener('click', async function () {
+        const username = (addAccountUsernameInput?.value || '').trim();
+        const cookieLive = (addAccountCookieInput?.value || '').trim();
+        const userId = cookieLive.match(/SPC_U=(\d+)/)?.[1];
+
+        if (!username || !cookieLive) {
+          setAddAccountFeedback('Vui lòng nhập username và cookie', 'warning');
+          return;
+        }
+        if (!userId) {
+          setAddAccountFeedback('Không parse được user_id từ SPC_U trong cookie', 'warning');
+          return;
+        }
+
+        submitAddAccountBtn.disabled = true;
+        setAddAccountFeedback('Đang xử lý...', 'info');
+        try {
+          const response = await fetch('/shopee-accounts/upload-video/create-account-by-cookie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username,
+              user_id: userId,
+              cookie_live: cookieLive
+            })
+          });
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.message || 'Create account failed');
+          }
+          setAddAccountFeedback(`Đã thêm/cập nhật account ${result.account?.username || username}`, 'success');
+          setTimeout(() => window.location.reload(), 700);
+        } catch (error) {
+          setAddAccountFeedback(error.message || 'Không thêm được account', 'danger');
+        } finally {
+          submitAddAccountBtn.disabled = false;
+        }
+      });
+    }
+
+    async function batchToggleUploadApi(enabled) {
+      const accountIds = getSelectedAccountIds();
+      if (!accountIds.length) {
+        return;
+      }
+      try {
+        const response = await fetch('/shopee-accounts/upload-video/batch-toggle-upload-api', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountIds, enabled })
+        });
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message || 'Update failed');
+        }
+        window.location.reload();
+      } catch (error) {
+        Swal.fire({
+          title: 'Lỗi',
+          text: 'Không cập nhật được selected accounts',
+          icon: 'error'
+        });
+      }
+    }
+
+    deleteSelectedBtn.addEventListener('click', async function () {
+      const accountIds = getSelectedAccountIds();
+      if (!accountIds.length) {
+        return;
+      }
+      const confirmDelete = await Swal.fire({
+        title: 'Xóa tài khoản?',
+        text: `Xóa ${accountIds.length} tài khoản đã chọn?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Xóa',
+        cancelButtonText: 'Hủy'
+      });
+      if (!confirmDelete.isConfirmed) {
+        return;
+      }
+      try {
+        const response = await fetch('/shopee-accounts/upload-video/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountIds })
+        });
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message || 'Delete failed');
+        }
+        await Swal.fire({
+          title: 'Thành công',
+          text: `Đã xóa ${result.deletedCount || accountIds.length} tài khoản`,
+          icon: 'success',
+          timer: 1200,
+          showConfirmButton: false
+        });
+        window.location.reload();
+      } catch (error) {
+        Swal.fire({
+          title: 'Lỗi',
+          text: 'Không xóa được selected accounts',
+          icon: 'error'
+        });
+      }
+    });
+
+    enableUploadSelectedBtn.addEventListener('click', function () {
+      batchToggleUploadApi(true);
+    });
+
+    disableUploadSelectedBtn.addEventListener('click', function () {
+      batchToggleUploadApi(false);
+    });
+
+    setMaxDailyVideosBtn.addEventListener('click', async function () {
+      const accountIds = getSelectedAccountIds();
+      if (!accountIds.length) {
+        return;
+      }
+
+      const inputResult = await Swal.fire({
+        title: 'Set Max Daily Videos',
+        input: 'number',
+        inputLabel: 'Nhập số video upload tối đa trong ngày',
+        inputAttributes: {
+          min: '0',
+          step: '1'
+        },
+        inputValue: '0',
+        showCancelButton: true,
+        confirmButtonText: 'Cập nhật',
+        cancelButtonText: 'Hủy'
+      });
+
+      if (!inputResult.isConfirmed) {
+        return;
+      }
+
+      const value = Number(inputResult.value);
+      if (!Number.isFinite(value) || value < 0) {
+        await Swal.fire({
+          title: 'Dữ liệu không hợp lệ',
+          text: 'Giá trị phải là số không âm',
+          icon: 'warning'
+        });
+        return;
+      }
+
+      try {
+        const response = await fetch('/shopee-accounts/upload-video/batch-set-max-daily-videos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountIds, maxDalyVideosUploaded: value })
+        });
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message || 'Update failed');
+        }
+        await Swal.fire({
+          title: 'Thành công',
+          text: `Đã cập nhật Max Daily Videos = ${value} cho ${result.modifiedCount || 0} tài khoản`,
+          icon: 'success'
+        });
+        window.location.reload();
+      } catch (error) {
+        Swal.fire({
+          title: 'Lỗi',
+          text: 'Không cập nhật được Max Daily Videos',
+          icon: 'error'
+        });
+      }
+    });
+
+    function formatLogTime(value) {
+      if (!value) return '-';
+      const d = new Date(value);
+      if (Number.isNaN(d.getTime())) return String(value);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+
+    function getStatusBadge(status) {
+      const value = (status || '').toString().toLowerCase();
+      if (['success', 'ok', 'uploaded', 'done'].includes(value)) {
+        return '<span class="badge bg-success">success</span>';
+      }
+      if (['error', 'failed', 'fail'].includes(value)) {
+        return '<span class="badge bg-danger">error</span>';
+      }
+      if (['warning', 'warn'].includes(value)) {
+        return '<span class="badge bg-warning text-dark">warning</span>';
+      }
+      return `<span class="badge bg-secondary">${status || '-'}</span>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function renderPostLinkButton(linkValue) {
+      const raw = String(linkValue || '').trim();
+      if (!raw) {
+        return '<span class="text-muted">-</span>';
+      }
+      try {
+        const parsed = new URL(raw);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return `<span class="text-muted text-truncate d-inline-block" style="max-width: 220px;" title="${escapeHtml(raw)}">${escapeHtml(raw)}</span>`;
+        }
+        const safeHref = escapeHtml(parsed.toString());
+        return `
+          <a class="btn btn-sm btn-outline-primary"
+             href="${safeHref}"
+             target="_blank"
+             rel="noopener noreferrer"
+             title="${safeHref}">
+            <i class="fas fa-external-link-alt me-1"></i>Mở
+          </a>
+        `;
+      } catch (error) {
+        return `<span class="text-muted text-truncate d-inline-block" style="max-width: 220px;" title="${escapeHtml(raw)}">${escapeHtml(raw)}</span>`;
+      }
+    }
+
+    async function loadApiLogs(username = '') {
+      const tbody = document.querySelector('#apiLogsTable tbody');
+      const params = new URLSearchParams();
+      params.set('limit', '300');
+      if (username) {
+        params.set('username', username);
+      }
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Đang tải logs...</td></tr>';
+      try {
+        const response = await fetch(`/shopee-accounts/upload-video/logs?${params.toString()}`);
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.message || 'Load logs failed');
+        }
+        const logs = Array.isArray(result.data) ? result.data : [];
+        if (!logs.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-3">Chưa có log</td></tr>';
+          return;
+        }
+        tbody.innerHTML = logs.map(log => `
+          <tr>
+            <td>${formatLogTime(log.createdAt)}</td>
+            <td>${log.account.username || '-'}</td>
+            <td>${getStatusBadge(log.status)}</td>
+            <td style="width: 45%; white-space: normal; word-break: break-word;">${log.message || '-'}</td>
+            <td>${log.job_id || '-'}</td>
+            <td>${renderPostLinkButton(log.post_link)}</td>
+            <td>${log.source || '-'}</td>
+          </tr>
+        `).join('');
+      } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">Không tải được log</td></tr>';
+      }
+    }
+
+    viewLogsButtons.forEach(btn => {
+      btn.addEventListener('click', function () {
+        const username = this.getAttribute('data-username') || '-';
+        currentLogsUsername = username;
+        if (accountLogsModalTitle) {
+          accountLogsModalTitle.textContent = `${username}`;
+        }
+        loadApiLogs(currentLogsUsername);
+        if (accountLogsModal) {
+          accountLogsModal.show();
+        }
+      });
+    });
+
+    if (refreshAccountLogsBtn) {
+      refreshAccountLogsBtn.addEventListener('click', function () {
+        loadApiLogs(currentLogsUsername);
+      });
+    }
+
+    connectRealtimeUploadLogs();
+    updateSelectedState();
+  });
+</script>

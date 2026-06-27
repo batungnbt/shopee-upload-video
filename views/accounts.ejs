@@ -1,0 +1,2358 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý tài khoản Shopee</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+
+  <style>
+    body {
+      background: transparent;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    .action-buttons .btn {
+      margin-right: 5px;
+    }
+
+    .badge-live-mode {
+      font-size: 0.8rem;
+    }
+
+    .modal-header {
+      background-color: #f8f9fa;
+    }
+
+    .select2-container {
+      width: 100% !important;
+    }
+
+    .select2-container--default .select2-selection--single {
+      height: 38px;
+      padding: 5px;
+      border: 1px solid #ced4da;
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+      height: 36px;
+    }
+
+    .select2-dropdown-open-search .select2-search {
+      display: block !important;
+    }
+
+    .select2-container--open .select2-dropdown {
+      margin-top: 0;
+    }
+
+    .select2-search__field:focus {
+      outline: none;
+      border-color: #80bdff;
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <%- contentFor('body') %>
+
+  <div class="container-fluid app-page">
+    <section class="app-hero">
+      <span class="app-eyebrow">
+        <i class="fas fa-store" aria-hidden="true"></i>
+        Account Control
+      </span>
+      <h2>Quản lý tài khoản Shopee trong giao diện gọn và dễ quét hơn.</h2>
+      <p>Xem nhanh trạng thái tài khoản, phiên live, trạng thái stream và thao tác hàng loạt mà không phải dò qua nhiều khối giao diện nhỏ.</p>
+      <div class="hero-actions">
+        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addAccountModal">
+          <i class="fas fa-plus" aria-hidden="true"></i> Add New Account
+        </button>
+      </div>
+    </section>
+
+    <!-- Filters and Search -->
+    <div class="card surface-card">
+      <div class="card-body">
+    <div class="row g-2 mb-0 align-items-center">
+      <% if (locals.isAdmin && locals.teams && locals.teams.length > 0) { %>
+      <div class="col-auto">
+        <select class="form-select" id="teamFilter" name="team" onchange="applyFilters()" style="min-width: 150px;">
+          <option value="">All Teams</option>
+          <% teams.forEach(team => { %>
+          <option value="<%= team._id %>" <%= selectedTeam === team._id.toString() ? 'selected' : '' %>><%= team.name %></option>
+          <% }); %>
+        </select>
+      </div>
+      <% } %>
+      <div class="col-auto">
+        <select class="form-select" id="statusFilter" onchange="applyFilters()" style="min-width: 120px;">
+          <option value="">All Status</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <a href="/shopee-accounts" class="btn btn-primary" title="Hiển thị tất cả">
+          <i class="fas fa-sync-alt"></i> <span class="d-none d-xl-inline">All</span>
+        </a>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#filterAllAccountsModal" title="Filter All Accounts">
+          <i class="fas fa-filter"></i> <span class="d-none d-xl-inline">Scan</span>
+        </button>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#batchUpdateMcnModal" title="Batch MCN Update">
+          <i class="fas fa-users-cog"></i> <span class="d-none d-xl-inline">MCN</span>
+        </button>
+      </div>
+      <div class="col-auto">
+        <form id="searchForm" method="GET" action="/shopee-accounts" style="width: 300px;">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search..." id="searchInput" name="search" value="<%= locals.search || '' %>">
+            <button class="btn btn-outline-secondary" type="submit">
+              <i class="fas fa-search"></i>
+            </button>
+            <a href="/shopee-accounts" class="btn btn-outline-secondary">
+              <i class="fas fa-times"></i>
+            </a>
+          </div>
+          <% if (locals.selectedTeam) { %>
+          <input type="hidden" name="team" value="<%= selectedTeam %>">
+          <% } %>
+        </form>
+      </div>
+    </div>
+      </div>
+    </div>
+
+
+
+    <!-- Bulk Actions Bar -->
+    <div class="row mb-3" id="bulkActionsBar" style="display: none;">
+      <div class="col">
+        <div class="d-flex align-items-center">
+          <span class="me-3">
+            <span id="selectedCount">0</span> accounts selected
+          </span>
+          <button class="btn btn-danger btn-sm" id="bulkDeleteBtn">
+            <i class="fas fa-trash"></i> Delete Selected
+          </button>
+          <button class="btn btn-secondary btn-sm ms-2" id="clearSelectionBtn">
+            <i class="fas fa-times"></i> Clear Selection
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accounts Table -->
+    <div class="card surface-card data-table-card">
+      <div class="card-header">
+        <div class="section-heading">
+          <div>
+            <h5 class="mb-0">Danh sách tài khoản</h5>
+            <p><%= accounts.length %> tài khoản trên màn hình hiện tại.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover" id="accountsTable">
+        <thead class="table-light">
+          <tr>
+            <th>
+              <input type="checkbox" id="selectAll" class="form-check-input">
+            </th>
+            <th>STT</th>
+            <th>Shop ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <% if (locals.isAdmin) { %><th>Team</th><% } %>
+            <th>Status</th>
+            <th>Products</th>
+            <th>Created At</th>
+            <th>State</th>
+            <th>Stream Status</th>
+            <th>Session Live</th>
+            <th>Video</th>
+            <th>Is MCN</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <% accounts.forEach(( account, index) => { %>
+        <tr data-account-id="<%= account._id %>">
+          <td>
+            <input type="checkbox" class="form-check-input account-checkbox" data-account-id="<%= account._id %>" data-username="<%= account.username %>">
+          </td>
+          <td><%=index + 1 %></td>
+          <td><%= account.shop_id || 'N/A' %></td>
+          <td><%= account.username || 'N/A' %></td>
+          <td><%= account.email || 'N/A' %></td>
+          <% if (locals.isAdmin) { %>
+          <td><%= account.team ? account.team.name : 'N/A' %></td>
+          <% } %>
+          <td>
+            <% if(account.is_active) { %>
+            <span class="badge bg-success">Active</span>
+            <% } else { %>
+            <span class="badge bg-danger">Inactive</span>
+            <% } %>
+          </td>
+
+          <td>
+            <%= account.productCount ? account.productCount : 'N/A' %>
+          </td>
+          <td><%= new Date(account.createdAt).toLocaleDateString() %></td>
+
+          <td>
+            <% if(account.state == "start") { %>
+            <span class="badge bg-success">Live</span>
+            <% } else if(account.state == "end") { %>
+            <span class="badge bg-danger">End</span>
+            <% } %>
+          </td>
+          <td class="stream-status" data-account-id="<%= account._id %>">
+            <% if(account.state == "start") { %>
+              <span class="badge bg-success stream-badge">Streaming</span>
+            <% } else if(account.state == "error") { %>
+              <span class="badge bg-danger stream-badge">Error</span>
+            <% } else { %>
+              <span class="badge bg-secondary stream-badge">Offline</span>
+            <% } %>
+          </td>
+          <td><%= account.session_id || 'N/A' %></td>
+          <td>
+            <select class="form-select form-select-sm video-selector" data-account-id="<%= account._id %>" style="width: 120px;">
+              <option value="">Chọn video</option>
+            </select>
+            <% if(account.videoFile) { %>
+            <small class="text-muted d-block"><%= account.videoFile %></small>
+            <% } %>
+          </td>
+          <td>
+            <!-- Display Is MCN status -->
+            <% if(account.isMcn) { %>
+            <span class="badge bg-info">MCN</span>
+            <% } else { %>
+            <span class="badge bg-secondary">No</span>
+            <% } %>
+          </td>
+
+          <td class="action-buttons">
+            <a href="/shopee-accounts/setup-live/<%= account._id %>" class="btn btn-sm btn-info">
+              <i class="fas fa-cog"></i>
+            </a>
+            <% if(account.state == "end" || !account.state) { %>
+            <button class="btn btn-sm btn-success start-live" data-id="<%= account._id %>" data-username="<%= account.username %>" title="Start Live">
+              <i class="fas fa-play"></i>
+            </button>
+            <% } else if(account.state == "start") { %>
+            <button class="btn btn-sm btn-danger end-live" data-id="<%= account._id %>" data-username="<%= account.username %>" title="End Live">
+              <i class="fas fa-stop"></i>
+            </button>
+            <% } %>
+            <button class="btn btn-sm btn-primary filter-products" data-username="<%= account.username %>" title="Lấy Thông Tin Giỏ">
+              <i class="fas fa-filter"></i>
+            </button>
+            <button class="btn btn-sm btn-success view-products" data-id="<%= account._id %>" data-username="<%= account.username %>" title="Xem sản phẩm">
+              <i class="fas fa-box-open"></i>
+            </button>
+            <button class="btn btn-sm btn-info add-products-by-link" data-id="<%= account._id %>" data-username="<%= account.username %>" title="Thêm sản phẩm theo link">
+              <i class="fas fa-link"></i>
+            </button>
+            <button class="btn btn-sm btn-warning edit-account" data-bs-toggle="modal" data-bs-target="#editAccountModal" data-id="<%= account._id %>" data-username="<%= account.username %>" data-email="<%= account.email %>" data-phone="<%= account.phone %>" data-shop-id="<%= account.shop_id %>" data-team="<%= account.team %>" data-is-active="<%= account.is_active %>" data-is-mcn="<%= account.isMcn %>">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-secondary transfer-products" data-id="<%= account._id %>" data-username="<%= account.username %>" title="Chuyển sản phẩm">
+              <i class="fas fa-exchange-alt"></i>
+            </button>
+            <button class="btn btn-sm btn-danger delete-account" data-id="<%= account._id %>" data-username="<%= account.username %>">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+        <% }); %>
+        </tbody>
+      </table>
+    </div>
+      </div>
+    </div>
+
+   
+  </div>
+  <!-- Add Products By Link Modal -->
+  <div class="modal fade" id="addProductsByLinkModal" tabindex="-1" aria-labelledby="addProductsByLinkModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addProductsByLinkModalLabel">Thêm sản phẩm theo link cho <span id="addProductsAccountName" class="fw-bold"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="productLinks" class="form-label">Nhập link sản phẩm (mỗi link một dòng)</label>
+            <textarea class="form-control" id="productLinks" rows="10" placeholder="<%= ((process.env.SHOPEE_ORIGIN || 'https://shopee.vn').startsWith('http') ? (process.env.SHOPEE_ORIGIN || 'https://shopee.vn') : `https://${process.env.SHOPEE_ORIGIN || 'shopee.vn'}`) %>/product/158647903/2403800575&#10;<%= ((process.env.SHOPEE_ORIGIN || 'https://shopee.vn').startsWith('http') ? (process.env.SHOPEE_ORIGIN || 'https://shopee.vn') : `https://${process.env.SHOPEE_ORIGIN || 'shopee.vn'}`) %>/product/123456789/9876543210"></textarea>
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Mỗi link sản phẩm nhập trên một dòng mới. Ví dụ: <%= ((process.env.SHOPEE_ORIGIN || 'https://shopee.vn').startsWith('http') ? (process.env.SHOPEE_ORIGIN || 'https://shopee.vn') : `https://${process.env.SHOPEE_ORIGIN || 'shopee.vn'}`) %>/product/158647903/2403800575
+          </div>
+          <div class="mt-2">
+            <p>Tổng số link đã nhập: <span id="linkCount" class="fw-bold">0</span></p>
+          </div>
+          <div class="progress d-none" id="addProductsProgress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div id="addProductsResults" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-primary" id="confirmAddProducts">Thêm sản phẩm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Add Account Modal -->
+  <div class="modal fade" id="addAccountModal" tabindex="-1" aria-labelledby="addAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addAccountModalLabel">Add New Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form action="/shopee-accounts/add" method="POST">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" class="form-control" id="username" name="username" required>
+            </div>
+            <div class="mb-3">
+              <label for="email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="email" name="email">
+            </div>
+            <div class="mb-3">
+              <label for="phone" class="form-label">Phone</label>
+              <input type="text" class="form-control" id="phone" name="phone">
+            </div>
+            <div class="mb-3">
+              <label for="shop_id" class="form-label">Shop ID</label>
+              <input type="text" class="form-control" id="shop_id" name="shop_id">
+            </div>
+            <div class="mb-3">
+              <% if (locals.isAdmin && locals.teams && locals.teams.length > 0) { %>
+              <div class="mb-3">
+                <label for="team" class="form-label">Team</label>
+                <select class="form-select" id="team" name="team">
+                  <option value="">Select Team</option>
+                  <% teams.forEach(team => { %>
+                  <option value="<%= team._id %>"><%= team.name %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <% } else if (locals.user && locals.user.team) { %>
+              <input type="hidden" name="team" value="<%= locals.user.team %>">
+              <% } %>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+              <label class="form-check-label" for="is_active">
+                Active
+              </label>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="isMcn" name="isMcn">
+              <label class="form-check-label" for="isMcn">
+                Is MCN
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Add Account</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Batch Update MCN Status Modal -->
+  <div class="modal fade" id="batchUpdateMcnModal" tabindex="-1" aria-labelledby="batchUpdateMcnModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="batchUpdateMcnModalLabel">Batch Update MCN Status</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="mcnStatus" class="form-label">Set MCN Status</label>
+            <select class="form-select" id="mcnStatus">
+              <option value="true">Enable MCN</option>
+              <option value="false">Disable MCN</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="usernameList" class="form-label">Enter Usernames (one per line)</label>
+            <textarea class="form-control" id="usernameList" rows="10" placeholder="username1&#10;username2&#10;username3"></textarea>
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Enter each username on a new line. The MCN status will be updated for all matching accounts.
+          </div>
+          <div id="batchUpdateResults" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmBatchUpdate">Update Accounts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Edit Account Modal -->
+  <div class="modal fade" id="editAccountModal" tabindex="-1" aria-labelledby="editAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editAccountModalLabel">Edit Account</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="editAccountForm" method="POST">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="edit_username" class="form-label">Username</label>
+              <input type="text" class="form-control" id="edit_username" name="username" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit_email" class="form-label">Email</label>
+              <input type="email" class="form-control" id="edit_email" name="email">
+            </div>
+            <div class="mb-3">
+              <label for="edit_phone" class="form-label">Phone</label>
+              <input type="text" class="form-control" id="edit_phone" name="phone">
+            </div>
+            <div class="mb-3">
+              <label for="edit_shop_id" class="form-label">Shop ID</label>
+              <input type="text" class="form-control" id="edit_shop_id" name="shop_id">
+            </div>
+            <div class="mb-3">
+              <% if (locals.isAdmin && locals.teams && locals.teams.length > 0) { %>
+              <div class="mb-3">
+                <label for="edit_team" class="form-label">Team</label>
+                <select class="form-select" id="edit_team" name="team">
+                  <option value="">Select Team</option>
+                  <% teams.forEach(team => { %>
+                  <option value="<%= team._id %>"><%= team.name %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <% } %>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active">
+              <label class="form-check-label" for="edit_is_active">
+                Active
+              </label>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="edit_isMcn" name="isMcn">
+              <label class="form-check-label" for="edit_isMcn">
+                Is MCN
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteConfirmModalLabel">Confirm Delete</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete the account <span id="deleteAccountName" class="fw-bold"></span>?</p>
+          <p class="text-danger">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Delete Confirmation Modal -->
+  <div class="modal fade" id="bulkDeleteConfirmModal" tabindex="-1" aria-labelledby="bulkDeleteConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="bulkDeleteConfirmModalLabel">Confirm Bulk Delete</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete <span id="bulkDeleteCount" class="fw-bold"></span> selected accounts?</p>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> This action cannot be undone. All selected accounts will be permanently deleted.
+          </div>
+          <div id="bulkDeleteAccountList" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmBulkDelete">Delete Selected Accounts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Products Modal -->
+  <div class="modal fade" id="filterProductsModal" tabindex="-1" aria-labelledby="filterProductsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterProductsModalLabel">Filter Products</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>This will filter products for account <span id="filterAccountName" class="fw-bold"></span>.</p>
+          <ul>
+            <li>Sẽ lấy thông tin các sản phâm của giỏ trong 7 ngày.</li>
+            <li>Nếu giỏ trống khi lấy thông tin giỏ sẽ tự lấy giỏ trước đấy.</li>
+            <li>Nếu không đủ giỏ hiện tại thì sẽ tự thêm sản phẩm từ giỏ đã live trước đấy.</li>
+          </ul>
+          <div class="progress d-none" id="filterProgress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div id="filterResults" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmFilter">Filter Products</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter All Accounts Modal -->
+  <div class="modal fade" id="filterAllAccountsModal" tabindex="-1" aria-labelledby="filterAllAccountsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterAllAccountsModalLabel">Filter All Accounts</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Lấy Thông tin giỏ<span class="fw-bold"> 7 ngày gần nhất</span>.</p>
+          <p>For each account:</p>
+          <ul>
+            <li>Sẽ lấy thông tin các sản phâm của giỏ trong 7 ngày.</li>
+            <li>Nếu giỏ trống khi lấy thông tin giỏ sẽ tự lấy giỏ trước đấy.</li>
+            <li>Nếu không đủ giỏ hiện tại thì sẽ tự thêm sản phẩm từ giỏ đã live trước đấy.</li>
+          </ul>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> This process may take some time depending on the number of accounts.
+          </div>
+          <div class="progress d-none" id="filterAllProgress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div id="filterAllResults" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="confirmFilterAll">Filter All Accounts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Device Info Modal -->
+  <div class="modal fade" id="deviceInfoModal" tabindex="-1" aria-labelledby="deviceInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="deviceInfoModalLabel">Thông tin thiết bị - <span id="deviceInfoUsername" class="fw-bold"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="deviceInfoLoading" class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Đang tải thông tin thiết bị...</p>
+          </div>
+          <div id="deviceInfoError" class="alert alert-danger" style="display: none;"></div>
+
+          <!-- Thêm phần chọn country và brand -->
+          <div class="row mb-3" id="deviceSelectors" style="display: none;">
+            <div class="col-md-6">
+              <label for="countrySelect" class="form-label">Quốc gia:</label>
+              <select class="form-select select2" id="countrySelect">
+                <option value="">Chọn ngẫu nhiên</option>
+                <!-- Các option sẽ được thêm bằng JavaScript -->
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="brandSelect" class="form-label">Thương hiệu:</label>
+              <select class="form-select select2" id="brandSelect">
+                <option value="">Chọn ngẫu nhiên</option>
+                <!-- Các option sẽ được thêm bằng JavaScript -->
+              </select>
+            </div>
+            <div class="col-12 mt-2">
+              <button type="button" class="btn btn-primary" id="generateDeviceBtn">
+                <i class="fas fa-sync-alt"></i> Tạo thiết bị mới
+              </button>
+            </div>
+          </div>
+
+          <div id="deviceInfoContent" style="display: none;">
+            <pre id="deviceInfoJson" class="bg-light p-3" style="max-height: 400px; overflow-y: auto;"></pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+          <button type="button" class="btn btn-primary" id="copyDeviceInfo">
+            <i class="fas fa-copy"></i> Sao chép
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Transfer Products Modal -->
+  <div class="modal fade" id="transferProductsModal" tabindex="-1" aria-labelledby="transferProductsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="transferProductsModalLabel">Chuyển sản phẩm từ <span id="sourceAccountName" class="fw-bold"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="targetAccount" class="form-label">Chọn tài khoản đích:</label>
+            <input id="targetAccount" class="form-control" placeholder="Nhập ID Account">
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Tất cả sản phẩm từ tài khoản nguồn sẽ được chuyển sang tài khoản đích. Hành động này không thể hoàn tác.
+          </div>
+          <div class="progress d-none" id="transferProgress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div id="transferResults" class="mt-3"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-primary" id="confirmTransfer">Chuyển sản phẩm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- View Account Products Modal -->
+  <div class="modal fade" id="viewProductsModal" tabindex="-1" aria-labelledby="viewProductsModalLabel" aria-hidden="true">
+    <div class="modal-dialog " style="--bs-modal-width: 90% ">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewProductsModalLabel">Sản phẩm của tài khoản <span id="productAccountName" class="fw-bold"></span></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Search and filter -->
+          <div class="row mb-3">
+            <div class="col-md-6">
+
+              <div class="input-group">
+                <input type="text" class="form-control" id="productSearchInput" placeholder="Tìm kiếm sản phẩm...">
+                <button class="btn btn-outline-secondary" type="button" id="searchProductBtn">
+                  <i class="fas fa-search"></i>
+                </button>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <button class="btn btn-danger" id="deleteNoInteractionProducts">
+                <i class="fas fa-trash"></i> Xóa sản phẩm không có tương tác
+              </button>
+              <button class="btn btn-warning" id="deleteCartProducts">
+                <i class="fas fa-shopping-cart"></i> Xóa Giỏ
+              </button>
+            </div>
+            <div class="col-md-3 text-end">
+              <span class="badge bg-primary" id="productCount">0 sản phẩm</span>
+            </div>
+          </div>
+
+          <!-- Products table -->
+          <div class="table-responsive">
+            <table class="table table-striped table-hover" id="productsTable">
+              <thead class="table-light">
+                <tr>
+                  <th>No.</th>
+                  <th>Cover</th>
+                  <th>Product Name</th>
+                  <th>Price</th>
+                  <th>Sold</th>
+                  <th>Rating</th>
+                  <th>Clicks</th>
+                  <th>Add to Cart</th>
+                  <th>Placed Orders</th>
+                  <th>Confirmed Orders</th>
+                  <th>Link</th>
+                </tr>
+              </thead>
+              <tbody id="productsTableBody">
+                <!-- Products will be loaded here -->
+                <tr>
+                  <td colspan="12" class="text-center">Đang tải dữ liệu...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <nav aria-label="Product pagination" class="mt-3">
+            <ul class="pagination justify-content-center" id="productsPagination">
+              <!-- Pagination will be generated here -->
+            </ul>
+          </nav>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap and jQuery Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Search functionality
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+          const searchTerm = this.value.toLowerCase();
+          const tableRows = document.querySelectorAll('tbody tr');
+
+          tableRows.forEach(row => {
+            const username = row.cells[1].textContent.toLowerCase();
+            const email = row.cells[2].textContent.toLowerCase();
+            const phone = row.cells[3].textContent.toLowerCase();
+
+            if (username.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm)) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // Handle Custom Cart toggle
+      $(document).on('change', '.toggle-custom-cart', function() {
+        const username = $(this).data('username');
+        const isCustomCart = $(this).prop('checked') ? "1" : "0";
+
+        $.ajax({
+          url: '/shopee-accounts/update-cart-custom',
+          method: 'POST',
+          data: {
+            username: username,
+            isCustomCart: isCustomCart
+          },
+          success: function(response) {
+            if (response.success) {
+              showToast('success', response.message);
+            } else {
+              showToast('error', response.message || 'Error updating custom cart status');
+              // Revert the toggle if there was an error
+              $(this).prop('checked', !$(this).prop('checked'));
+            }
+          },
+          error: function(xhr) {
+            const errorMsg = xhr.responseJSON?.message || 'Server error';
+            showToast('error', errorMsg);
+            // Revert the toggle if there was an error
+            $(this).prop('checked', !$(this).prop('checked'));
+          }
+        });
+      });
+
+      // Bulk selection functionality
+      const selectAllCheckbox = document.getElementById('selectAll');
+      const accountCheckboxes = document.querySelectorAll('.account-checkbox');
+      const bulkActionsBar = document.getElementById('bulkActionsBar');
+      const selectedCountSpan = document.getElementById('selectedCount');
+      const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+      const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+      const bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteConfirmModal'));
+      const confirmBulkDeleteBtn = document.getElementById('confirmBulkDelete');
+
+      // Update selected count and show/hide bulk actions bar
+      function updateBulkActions() {
+        const selectedCheckboxes = document.querySelectorAll('.account-checkbox:checked');
+        const selectedCount = selectedCheckboxes.length;
+        
+        selectedCountSpan.textContent = selectedCount;
+        
+        if (selectedCount > 0) {
+          bulkActionsBar.style.display = 'block';
+        } else {
+          bulkActionsBar.style.display = 'none';
+        }
+      }
+
+      // Select all functionality
+      selectAllCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        accountCheckboxes.forEach(checkbox => {
+          checkbox.checked = isChecked;
+        });
+        updateBulkActions();
+      });
+
+      // Individual checkbox change
+      accountCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          // Update select all checkbox state
+          const allChecked = document.querySelectorAll('.account-checkbox').length === document.querySelectorAll('.account-checkbox:checked').length;
+          const someChecked = document.querySelectorAll('.account-checkbox:checked').length > 0;
+          
+          selectAllCheckbox.checked = allChecked;
+          selectAllCheckbox.indeterminate = someChecked && !allChecked;
+          
+          updateBulkActions();
+        });
+      });
+
+      // Clear selection
+      clearSelectionBtn.addEventListener('click', function() {
+        accountCheckboxes.forEach(checkbox => {
+          checkbox.checked = false;
+        });
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+        updateBulkActions();
+      });
+
+      // Bulk delete button click
+      bulkDeleteBtn.addEventListener('click', function() {
+        const selectedCheckboxes = document.querySelectorAll('.account-checkbox:checked');
+        const selectedCount = selectedCheckboxes.length;
+        
+        if (selectedCount === 0) {
+          return;
+        }
+
+        // Update modal content
+        document.getElementById('bulkDeleteCount').textContent = selectedCount;
+        
+        // Show list of accounts to be deleted
+        
+        bulkDeleteModal.show();
+      });
+
+      // Confirm bulk delete
+      confirmBulkDeleteBtn.addEventListener('click', function() {
+        const selectedCheckboxes = document.querySelectorAll('.account-checkbox:checked');
+        const accountIds = Array.from(selectedCheckboxes).map(checkbox => 
+          checkbox.getAttribute('data-account-id')
+        );
+
+        if (accountIds.length === 0) {
+          return;
+        }
+
+        // Disable button and show loading
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...';
+
+        // Send bulk delete request
+        fetch('/shopee-accounts/bulk-delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ accountIds: accountIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Close modal and refresh page
+            bulkDeleteModal.hide();
+            window.location.reload();
+          } else {
+            alert('Error: ' + data.message);
+            // Re-enable button
+            this.disabled = false;
+            this.innerHTML = 'Delete Selected Accounts';
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('An error occurred while deleting accounts.');
+          // Re-enable button
+          this.disabled = false;
+          this.innerHTML = 'Delete Selected Accounts';
+        });
+      });
+
+      // Reset bulk delete button when modal is closed
+      document.getElementById('bulkDeleteConfirmModal').addEventListener('hidden.bs.modal', function() {
+        confirmBulkDeleteBtn.disabled = false;
+        confirmBulkDeleteBtn.innerHTML = 'Delete Selected Accounts';
+      });
+
+    });
+      // Filter products functionality
+      const filterButtons = document.querySelectorAll('.filter-products');
+      const filterModal = new bootstrap.Modal(document.getElementById('filterProductsModal'));
+      const filterAllModal = new bootstrap.Modal(document.getElementById('filterAllAccountsModal'));
+      let accountToFilter = null;
+
+      filterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          accountToFilter = this.getAttribute('data-username');
+          document.getElementById('filterAccountName').textContent = accountToFilter;
+          document.getElementById('filterResults').innerHTML = '';
+          document.getElementById('filterProgress').classList.add('d-none');
+          document.getElementById('filterProgress').querySelector('.progress-bar').style.width = '0%';
+          filterModal.show();
+        });
+      });
+
+      // Confirm filter button
+      document.getElementById('confirmFilter').addEventListener('click', function() {
+        if (accountToFilter) {
+          // Show progress bar
+          const progressBar = document.getElementById('filterProgress');
+          progressBar.classList.remove('d-none');
+          progressBar.querySelector('.progress-bar').style.width = '50%';
+
+          // Disable confirm button
+          this.disabled = true;
+          this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Filtering...';
+
+          // Send filter request
+          fetch(`/shopee-accounts/filter-products/${accountToFilter}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              // Update progress bar
+              progressBar.querySelector('.progress-bar').style.width = '100%';
+
+              // Re-enable confirm button
+              document.getElementById('confirmFilter').disabled = false;
+              document.getElementById('confirmFilter').innerHTML = 'Filter Products';
+
+              if (data.success) {
+                // Show results
+                const resultsDiv = document.getElementById('filterResults');
+                resultsDiv.innerHTML = `
+                                <div class="alert alert-success">
+                                    <h5>Filtering completed successfully!</h5>
+                                    <ul>
+                                        <li>updated products: ${data.stats.updatedCount}</li>
+                                    
+                                    </ul>
+                                </div>
+                            `;
+
+                // Add refresh button
+                resultsDiv.innerHTML += `
+                                <button class="btn btn-primary" onclick="window.location.reload()">
+                                    <i class="fas fa-sync"></i> Refresh Page
+                                </button>
+                            `;
+              } else {
+                // Show error
+                document.getElementById('filterResults').innerHTML = `
+                                <div class="alert alert-danger">
+                                    <h5>Error:</h5>
+                                    <p>${data.message}</p>
+                                </div>
+                            `;
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+
+              // Re-enable confirm button
+              document.getElementById('confirmFilter').disabled = false;
+              document.getElementById('confirmFilter').innerHTML = 'Filter Products';
+
+              // Show error
+              document.getElementById('filterResults').innerHTML = `
+                            <div class="alert alert-danger">
+                                <h5>Error:</h5>
+                                <p>An error occurred while filtering products.</p>
+                            </div>
+                        `;
+            });
+        }
+      });
+
+      // Filter All Accounts functionality
+      document.getElementById('confirmFilterAll').addEventListener('click', function() {
+        // Get all visible accounts
+        const visibleRows = Array.from(document.querySelectorAll('tbody tr')).filter(row => {
+          return row.style.display !== 'none';
+        });
+
+        if (visibleRows.length === 0) {
+          document.getElementById('filterAllResults').innerHTML = `
+                        <div class="alert alert-warning">
+                            <p>No visible accounts found. Please adjust your filters.</p>
+                        </div>
+                    `;
+          return;
+        }
+
+        // Show progress bar
+        const progressBar = document.getElementById('filterAllProgress');
+        progressBar.classList.remove('d-none');
+        progressBar.querySelector('.progress-bar').style.width = '10%';
+
+        // Disable confirm button
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Filtering All Accounts...';
+
+        // Get usernames from visible rows
+        // Xác định index cột username từ header
+        const headerCells = document.querySelectorAll('thead th');
+        const usernameIndex = Array.from(headerCells).findIndex(cell => cell.textContent.includes('Username'));
+
+        const usernames = visibleRows.map(row => {
+          const usernameCell = row.cells[usernameIndex];
+          return usernameCell ? usernameCell.textContent.trim() : '';
+        }).filter(username => username && username !== 'N/A');
+
+        // Results container
+        const resultsDiv = document.getElementById('filterAllResults');
+        resultsDiv.innerHTML = `
+                    <div class="alert alert-info">
+                        <p>Starting to filter ${usernames.length} accounts...</p>
+                    </div>
+                `;
+
+        // Process accounts sequentially
+        let processed = 0;
+        let successful = 0;
+        let failed = 0;
+        let totalResults = {};
+
+        // Function to process each account
+        const processAccount = (index) => {
+          if (index >= usernames.length) {
+            // All accounts processed
+            progressBar.querySelector('.progress-bar').style.width = '100%';
+
+            // Re-enable confirm button
+            document.getElementById('confirmFilterAll').disabled = false;
+            document.getElementById('confirmFilterAll').innerHTML = 'Filter All Accounts';
+
+            // Show final results
+            resultsDiv.innerHTML = `
+                            <div class="alert ${failed > 0 ? 'alert-warning' : 'alert-success'}">
+                                <h5>Filtering completed!</h5>
+                                <p>Processed ${usernames.length} accounts: ${successful} successful, ${failed} failed</p>
+                                ${totalResults.initialCount ? `
+                                <ul>
+                                    <li>Total products: ${totalResults.initialCount}</li>
+                                </ul>` : ''}
+                            </div>
+                        `;
+
+            // Add refresh button
+            resultsDiv.innerHTML += `
+                            <button class="btn btn-primary" onclick="window.location.reload()">
+                                <i class="fas fa-sync"></i> Refresh Page
+                            </button>
+                        `;
+            return;
+          }
+
+          const username = usernames[index];
+          const progress = Math.floor(10 + ((index + 1) / usernames.length) * 90);
+          progressBar.querySelector('.progress-bar').style.width = `${progress}%`;
+
+          // Update status
+          resultsDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <p>Processing account ${index + 1}/${usernames.length}: ${username}</p>
+                            <p>Completed: ${successful} successful, ${failed} failed</p>
+                        </div>
+                    `;
+
+          // Send filter request for this account
+          fetch(`/shopee-accounts/filter-products/${username}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              processed++;
+
+              if (data.success) {
+                successful++;
+
+                // Aggregate stats
+                if (!totalResults.initialCount) {
+                  totalResults = {
+                    initialCount: 0,
+                    unlinkedCount: 0,
+                    newProductsAdded: 0,
+                    finalCount: 0
+                  };
+                }
+
+                totalResults.initialCount += data.stats.initialCount || 0;
+                totalResults.unlinkedCount += data.stats.unlinkedCount || 0;
+                totalResults.newProductsAdded += data.stats.newProductsAdded || 0;
+                totalResults.finalCount += data.stats.finalCount || 0;
+              } else {
+                failed++;
+              }
+
+              // Process next account
+              processAccount(index + 1);
+            })
+            .catch(error => {
+              console.error(`Error filtering account ${username}:`, error);
+              processed++;
+              failed++;
+
+              // Process next account
+              processAccount(index + 1);
+            });
+        };
+
+        // Start processing accounts
+        processAccount(0);
+      });
+
+      // Filter by team
+      const teamFilter = document.getElementById('teamFilter');
+      if (teamFilter) {
+        teamFilter.addEventListener('change', function() {
+          const selectedTeam = this.value;
+          const tableRows = document.querySelectorAll('tbody tr');
+
+          tableRows.forEach(row => {
+            const team = row.cells[4].textContent.trim();
+
+            if (selectedTeam === '' || team === selectedTeam || (team === 'N/A' && selectedTeam === 'null')) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // Filter by status
+      const statusFilter = document.getElementById('statusFilter');
+      if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+          const selectedStatus = this.value;
+          const tableRows = document.querySelectorAll('tbody tr');
+
+          tableRows.forEach(row => {
+            const statusCell = row.cells[5].querySelector('.badge');
+            const isActive = statusCell.classList.contains('bg-success');
+
+            if (selectedStatus === '' || (selectedStatus === 'true' && isActive) || (selectedStatus === 'false' && !isActive)) {
+              row.style.display = '';
+            } else {
+              row.style.display = 'none';
+            }
+          });
+        });
+      }
+
+      // Edit account functionality
+      const editButtons = document.querySelectorAll('.edit-account');
+      const editForm = document.getElementById('editAccountForm');
+
+      editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const accountId = this.getAttribute('data-id');
+          const username = this.getAttribute('data-username');
+          const email = this.getAttribute('data-email');
+          const phone = this.getAttribute('data-phone');
+          const shopId = this.getAttribute('data-shop-id');
+          const team = this.getAttribute('data-team');
+          const isActive = this.getAttribute('data-is-active') === 'true';
+          const isMcn = this.getAttribute('data-is-mcn') === 'true'; // Get isMcn value
+          // Set form action
+          editForm.action = `/shopee-accounts/update/${accountId}`;
+
+          // Populate form fields
+          document.getElementById('edit_username').value = username || '';
+          document.getElementById('edit_email').value = email || '';
+          document.getElementById('edit_phone').value = phone || '';
+          document.getElementById('edit_shop_id').value = shopId || '';
+
+          // Set team if the select exists
+          const teamSelect = document.getElementById('edit_team');
+          if (teamSelect && team) {
+            teamSelect.value = team;
+          }
+          document.getElementById('edit_isMcn').checked = isMcn; // Set isMcn checkbox
+          document.getElementById('edit_is_active').checked = isActive;
+        });
+      });
+
+      // Function to apply filters
+      window.applyFilters = function() {
+        const teamFilter = document.getElementById('teamFilter');
+        const statusFilter = document.getElementById('statusFilter');
+        const searchInput = document.getElementById('searchInput');
+        const searchForm = document.getElementById('searchForm');
+
+        // Add team filter to form if it exists
+        if (teamFilter) {
+          let teamInput = searchForm.querySelector('input[name="team"]');
+          if (!teamInput && teamFilter.value) {
+            teamInput = document.createElement('input');
+            teamInput.type = 'hidden';
+            teamInput.name = 'team';
+            searchForm.appendChild(teamInput);
+          }
+
+          if (teamInput) {
+            if (teamFilter.value) {
+              teamInput.value = teamFilter.value;
+            } else {
+              teamInput.remove();
+            }
+          }
+        }
+
+        // Add status filter to form if selected
+        if (statusFilter.value) {
+          let statusInput = searchForm.querySelector('input[name="status"]');
+          if (!statusInput) {
+            statusInput = document.createElement('input');
+            statusInput.type = 'hidden';
+            statusInput.name = 'status';
+            searchForm.appendChild(statusInput);
+          }
+          statusInput.value = statusFilter.value;
+        } else {
+          const statusInput = searchForm.querySelector('input[name="status"]');
+          if (statusInput) {
+            statusInput.remove();
+          }
+        }
+
+        // Submit the form
+        searchForm.submit();
+      };
+
+      // Device Info functionality
+      const deviceInfoButtons = document.querySelectorAll('.get-device-info');
+      const deviceInfoModal = new bootstrap.Modal(document.getElementById('deviceInfoModal'));
+      let countries = [];
+      let brands = [];
+
+
+      // Lấy danh sách quốc gia và thương hiệu khi trang được tải
+      fetch('/shopee-accounts/list_info', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            countries = data.countries || [];
+            brands = data.brands || [];
+
+            // Populate country select
+            const countrySelect = document.getElementById('countrySelect');
+            if (countries.length > 0) {
+              // Xóa các option cũ trừ option đầu tiên
+              while (countrySelect.options.length > 1) {
+                countrySelect.remove(1);
+              }
+
+              // Thêm các option mới
+              countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = country.iso2;
+                option.textContent = country.name;
+                // Set PH as default selected country
+                if (country.iso2 === 'PH') {
+                  option.selected = true;
+                }
+                countrySelect.appendChild(option);
+              });
+            }
+
+            // Populate brand select
+            const brandSelect = document.getElementById('brandSelect');
+            if (brands.length > 0) {
+              // Xóa các option cũ trừ option đầu tiên
+              while (brandSelect.options.length > 1) {
+                brandSelect.remove(1);
+              }
+
+              // Thêm các option mới
+              brands.forEach(brand => {
+                const option = document.createElement('option');
+                option.value = brand;
+                option.textContent = brand;
+                if (brand === 'samsung') {
+                  option.selected = true;
+                }
+                brandSelect.appendChild(option);
+              });
+            }
+
+            // Cập nhật Select2 sau khi thêm options
+            $('#countrySelect').trigger('change');
+            $('#brandSelect').trigger('change');
+
+          } else {
+            console.error('Không thể lấy danh sách quốc gia và thương hiệu:', data.message);
+          }
+        })
+        .catch(error => {
+          console.error('Lỗi khi lấy danh sách quốc gia và thương hiệu:', error);
+        });
+
+      // Xử lý sự kiện khi nhấn nút lấy thông tin thiết bị
+      deviceInfoButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const username = this.getAttribute('data-username');
+
+          // Set username in modal title
+          document.getElementById('deviceInfoUsername').textContent = username;
+
+          // Show loading state
+          document.getElementById('deviceInfoLoading').style.display = 'block';
+          document.getElementById('deviceInfoError').style.display = 'none';
+          document.getElementById('deviceInfoContent').style.display = 'none';
+          document.getElementById('deviceSelectors').style.display = 'none';
+
+          // Show modal
+          deviceInfoModal.show();
+
+          // Fetch device info from server
+          fetchDeviceInfo(username);
+        });
+      });
+
+      // Xử lý sự kiện khi nhấn nút tạo thiết bị mới
+      document.getElementById('generateDeviceBtn').addEventListener('click', function() {
+        const username = document.getElementById('deviceInfoUsername').textContent;
+        const country = document.getElementById('countrySelect').value;
+        const brand = document.getElementById('brandSelect').value;
+
+        fetchDeviceInfo(username, country, brand);
+      });
+
+      // Hàm để lấy thông tin thiết bị
+      function fetchDeviceInfo(username, country = '', brand = '') {
+        // Show loading state
+        document.getElementById('deviceInfoLoading').style.display = 'block';
+        document.getElementById('deviceInfoError').style.display = 'none';
+        document.getElementById('deviceInfoContent').style.display = 'none';
+
+        // Tạo query params
+        const params = new URLSearchParams();
+        if (country) {
+          params.append('country', country);
+          params.append('is_new', 1);
+        }
+
+        if (username) params.append('username', username);
+        if (brand) params.append('brand_device', brand);
+
+        // Fetch device info from /random-device endpoint
+        fetch(`/shopee-accounts/random-device?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            // Hide loading
+            document.getElementById('deviceInfoLoading').style.display = 'none';
+
+            if (data.success) {
+              // Show selectors and content
+              document.getElementById('deviceSelectors').style.display = 'block';
+              document.getElementById('deviceInfoContent').style.display = 'block';
+
+              // Set device info and change background to green if exists
+              const deviceInfoElement = document.getElementById('deviceInfoJson');
+              deviceInfoElement.textContent = data.deviceInfo;
+              if (data.deviceInfo) {
+                deviceInfoElement.style.backgroundColor = '#e8f5e9';
+              }
+            } else {
+              // Show error
+              document.getElementById('deviceInfoError').style.display = 'block';
+              document.getElementById('deviceInfoError').style.backgroundColor = '#e8f5e9';
+              document.getElementById('deviceInfoError').textContent = data.message || 'Không thể lấy thông tin thiết bị';
+            }
+          })
+          .catch(error => {
+            // Hide loading and show error
+            document.getElementById('deviceInfoLoading').style.display = 'none';
+            document.getElementById('deviceInfoError').style.display = 'block';
+            document.getElementById('deviceInfoError').textContent = 'Lỗi khi lấy thông tin thiết bị: ' + error.message;
+          });
+      }
+
+      // Copy device info to clipboard
+      document.getElementById('copyDeviceInfo').addEventListener('click', function() {
+        const deviceInfo = document.getElementById('deviceInfoJson').textContent;
+        navigator.clipboard.writeText(deviceInfo)
+          .then(() => {
+            // Show success message or toast
+            alert('Đã sao chép thông tin thiết bị vào clipboard!');
+          })
+          .catch(err => {
+            console.error('Không thể sao chép: ', err);
+          });
+      });
+
+      // Delete account functionality
+      const deleteButtons = document.querySelectorAll('.delete-account');
+      const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+      let accountToDelete = null;
+
+      deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          accountToDelete = this.getAttribute('data-id');
+          const accountName = this.getAttribute('data-username');
+
+          document.getElementById('deleteAccountName').textContent = accountName || 'this account';
+          deleteModal.show();
+        });
+      });
+
+      // Confirm delete button
+      document.getElementById('confirmDelete').addEventListener('click', function() {
+        if (accountToDelete) {
+          // Send delete request
+          fetch(`/shopee-accounts/delete/${accountToDelete}`, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                // Close modal and refresh page
+                deleteModal.hide();
+                window.location.reload();
+              } else {
+                alert('Error: ' + data.message);
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while deleting the account.');
+            });
+        }
+      });
+      $(document).on('click', '#deleteNoInteractionProducts', function() {
+        const accountId = $(this).data('account-id');
+        const accountUsername = $('#productAccountName').text();
+
+        if (confirm(`Bạn có chắc chắn muốn xóa tất cả sản phẩm không có tương tác của tài khoản ${accountUsername}?`)) {
+          // Hiển thị loading
+          document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="12" class="text-center">Đang tải dữ liệu...</td></tr>';
+          // Gửi request để xóa sản phẩm không có tương tác
+          $.ajax({
+            url: `/shopee-accounts/${accountId}/no-interaction`,
+            method: 'DELETE',
+            success: function(response) { 
+              // Hiển thị thông báo thành công
+             // alert(`Đã xóa ${response.deletedCount} sản phẩm không có tương tác.`);
+              let links  = response.links;
+              let linksHtml = '';
+              if (links && links.length > 0) {
+                linksHtml = '<div class="alert alert-info mt-3"><h6>Danh sách links sản phẩm đã xóa:</h6><ul>';
+                links.forEach(link => {
+                  linksHtml += `<li><a href="${link}" target="_blank">${link}</a></li>`;
+                });
+                linksHtml += '</ul></div>';
+                
+                // Hiển thị danh sách links trong modal
+                $('#viewProductsModal .modal-body').prepend(linksHtml);
+              }
+              
+              loadAccountProducts(accountId)
+            },
+            error: function(error) {
+              console.error('Error deleting products:', error);
+              alert('Đã xảy ra lỗi khi xóa sản phẩm không có tương tác.');
+
+              loadAccountProducts(accountId)
+            }
+          });
+        }
+      });
+      
+      // Handle delete cart products
+      $(document).on('click', '#deleteCartProducts', function() {
+        const accountId = $(this).data('account-id') || $('#deleteNoInteractionProducts').data('account-id');
+        const accountUsername = $('#productAccountName').text();
+
+        if (confirm(`Bạn có chắc chắn muốn xóa tất cả sản phẩm trong giỏ của tài khoản ${accountUsername}?`)) {
+          // Hiển thị loading
+          document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="12" class="text-center">Đang xóa sản phẩm...</td></tr>';
+          
+          // Gửi request để xóa sản phẩm trong giỏ
+          $.ajax({
+            url: `/shopee-accounts/${accountId}/cart-products`,
+            method: 'DELETE',
+            success: function(response) { 
+              // Hiển thị thông báo thành công
+              let links = response.links;
+              let linksHtml = '';
+              
+              if (links && links.length > 0) {
+                linksHtml = '<div class="alert alert-info mt-3"><h6>Danh sách links sản phẩm đã xóa khỏi giỏ:</h6><ul>';
+                links.forEach(link => {
+                  linksHtml += `<li><a href="${link}" target="_blank">${link}</a></li>`;
+                });
+                linksHtml += '</ul></div>';
+                
+                // Hiển thị danh sách links trong modal
+                $('#viewProductsModal .modal-body').prepend(linksHtml);
+              }
+              
+              // Tải lại danh sách sản phẩm
+              loadAccountProducts(accountId);
+            },
+            error: function(error) {
+              console.error('Error deleting cart products:', error);
+              alert('Đã xảy ra lỗi khi xóa sản phẩm trong giỏ.');
+              
+              // Tải lại danh sách sản phẩm
+              loadAccountProducts(accountId);
+            }
+          });
+        }
+      });
+
+      function loadAccountProducts(accountId) {
+        fetch(`/shopee-accounts/${accountId}/products`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Update product count
+              document.getElementById('productCount').textContent = `${data.products.length} sản phẩm`;
+
+              // Populate products table
+              const tableBody = document.getElementById('productsTableBody');
+              if (data.products.length > 0) {
+                tableBody.innerHTML = '';
+                data.products.forEach((product, index) => {
+                  tableBody.innerHTML += `
+                                    <tr>
+                                        <td>${index + 1}</td>
+                                        <td> ${product?.cover_image ? `<img src="${product.cover_image }" alt="Cover Image" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;">` : '   <span class="badge bg-secondary">No Image</span>'}</td>
+                                        <td> ${product?.name ? (product.name.length > 40 ? product.name.slice(0, 37) + '…': product.name) : 'N/A'}</td>
+                                        <td>${product.price ? (product.price/100000).toLocaleString() + ' Peso' : 'N/A'}</td>
+                                        <td>${product.sold || '0'}</td>
+                                        <td>${product.rating || 'N/A'}</td>
+                                        <td>${product.clicks || '0'}</td>
+                                        <td>${product.atc || '0'}</td>
+                                        <td>
+                                            <div>Placed: ${product.placed_orders || '0'}</div>
+                                            <div>Items: ${product.placed_items_sold || '0'}</div>
+                                            <div>Sales: ${product.placed_sales ? product.placed_sales.toLocaleString() + 'đ' : '0đ'}</div>
+                                        </td>
+                                        <td>
+                                            <div>Orders: ${product.confirmed_orders || '0'}</div>
+                                            <div>Items: ${product.confirmed_items_sold || '0'}</div>
+                                            <div>Sales: ${product.confirmed_sales ? product.confirmed_sales.toLocaleString() + 'đ' : '0đ'}</div>
+                                        </td>
+                                     
+                                        <td>
+                                            <a href="${product.url || '#'}" target="_blank" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-external-link-alt"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                `;
+                });
+              } else {
+                tableBody.innerHTML = '<tr><td colspan="12" class="text-center">Không có sản phẩm nào</td></tr>';
+              }
+            } else {
+              document.getElementById('productsTableBody').innerHTML = `<tr><td colspan="12" class="text-center text-danger">Lỗi: ${data.message || 'Không thể tải dữ liệu'}</td></tr>`;
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="12" class="text-center text-danger">Đã xảy ra lỗi khi tải dữ liệu</td></tr>';
+          });
+
+      }
+      // View products functionality
+      const viewProductsButtons = document.querySelectorAll('.view-products');
+      const viewProductsModal = new bootstrap.Modal(document.getElementById('viewProductsModal'));
+
+      viewProductsButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const accountId = this.getAttribute('data-id');
+          const username = this.getAttribute('data-username');
+
+          // Set account name in modal title
+          document.getElementById('productAccountName').textContent = username;
+
+          // Clear previous products
+          document.getElementById('productsTableBody').innerHTML = '<tr><td colspan="12" class="text-center">Đang tải dữ liệu...</td></tr>';
+          document.getElementById('productCount').textContent = '0 sản phẩm';
+          $('#deleteNoInteractionProducts').data('account-id', accountId);
+          $('#deleteCartProducts').data('account-id', accountId);
+          // Show modal
+          viewProductsModal.show();
+          loadAccountProducts(accountId)
+          // Fetch products for this account
+        });
+      });
+
+      // Toggle live mode functionality
+      const toggleButtons = document.querySelectorAll('.toggle-live-mode');
+
+      toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const accountId = this.getAttribute('data-id');
+          const currentMode = this.getAttribute('data-current-mode');
+          const newMode = currentMode === 'real' ? 'test' : 'real';
+
+          // Confirm before switching from test to real (which clears product links)
+          if (currentMode === 'test' && newMode === 'real') {
+            if (!confirm('Switching from Test to Real mode will clear all product links. Continue?')) {
+              return;
+            }
+          }
+
+          // Send update request
+          fetch(`/shopee-accounts/toggle-live-mode/${accountId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newMode
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                window.location.reload();
+              } else {
+                alert('Error: ' + data.message);
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert('An error occurred while toggling live mode.');
+            });
+        });
+      });
+
+      // Start Live functionality
+      const startLiveButtons = document.querySelectorAll('.start-live');
+      startLiveButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const accountId = this.getAttribute('data-id');
+          const username = this.getAttribute('data-username');
+          
+          if (confirm(`Bạn có chắc chắn muốn bắt đầu live cho tài khoản ${username}?`)) {
+            // Show loading state
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            
+            fetch(`/shopee-accounts/start-live/${accountId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                alert(`Đã bắt đầu live cho tài khoản ${username}!`);
+                window.location.reload();
+              } else {
+                alert(`Lỗi: ${data.message}`);
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-play"></i>';
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert('Đã xảy ra lỗi khi bắt đầu live.');
+              // Re-enable button
+              this.disabled = false;
+              this.innerHTML = '<i class="fas fa-play"></i>';
+            });
+          }
+        });
+      });
+
+      // End Live functionality
+      const endLiveButtons = document.querySelectorAll('.end-live');
+      endLiveButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const accountId = this.getAttribute('data-id');
+          const username = this.getAttribute('data-username');
+          
+          if (confirm(`Bạn có chắc chắn muốn kết thúc live cho tài khoản ${username}?`)) {
+            // Show loading state
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+            
+            fetch(`/shopee-accounts/end-live/${accountId}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                alert(`Đã kết thúc live cho tài khoản ${username}!`);
+                window.location.reload();
+              } else {
+                alert(`Lỗi: ${data.message}`);
+                // Re-enable button
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-stop"></i>';
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+              alert('Đã xảy ra lỗi khi kết thúc live.');
+              // Re-enable button
+              this.disabled = false;
+              this.innerHTML = '<i class="fas fa-stop"></i>';
+            });
+          }
+        });
+      });
+      // Batch Update MCN Status functionality
+      const batchUpdateModal = new bootstrap.Modal(document.getElementById('batchUpdateMcnModal'));
+      const confirmBatchUpdateBtn = document.getElementById('confirmBatchUpdate');
+
+      if (confirmBatchUpdateBtn) {
+        confirmBatchUpdateBtn.addEventListener('click', function() {
+          // Get values from form
+          const mcnStatus = document.getElementById('mcnStatus').value === 'true';
+          const usernameListText = document.getElementById('usernameList').value.trim();
+
+          if (!usernameListText) {
+            document.getElementById('batchUpdateResults').innerHTML = `
+           <div class="alert alert-warning">
+             <p>Please enter at least one username.</p>
+           </div>
+         `;
+            return;
+          }
+
+          // Parse usernames (split by newline and filter empty lines)
+          const usernames = usernameListText.split('\n')
+            .map(username => username.trim())
+            .filter(username => username.length > 0);
+
+          if (usernames.length === 0) {
+            document.getElementById('batchUpdateResults').innerHTML = `
+           <div class="alert alert-warning">
+             <p>No valid usernames found.</p>
+           </div>
+         `;
+            return;
+          }
+
+          // Disable button and show loading state
+          this.disabled = true;
+          this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Updating...';
+
+          // Prepare data for the request
+          const requestData = {
+            usernames: usernames,
+            isMcn: mcnStatus
+          };
+
+          // Send the request to update accounts
+          fetch('/shopee-accounts/batch-update-mcn', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+              // Re-enable button
+              confirmBatchUpdateBtn.disabled = false;
+              confirmBatchUpdateBtn.innerHTML = 'Update Accounts';
+
+              if (data.success) {
+                // Show success message with details
+                document.getElementById('batchUpdateResults').innerHTML = `
+             <div class="alert alert-success">
+               <h5>Update Completed</h5>
+               <p>Successfully updated ${data.updatedCount} out of ${usernames.length} accounts.</p>
+               ${data.notFound.length > 0 ? 
+                 `<p>The following usernames were not found:</p>
+                 <ul>
+                   ${data.notFound.map(username => `<li>${username}</li>`).join('')}
+                 </ul>` : ''}
+             </div>
+             <button class="btn btn-primary" onclick="window.location.reload()">
+               <i class="fas fa-sync"></i> Refresh Page
+             </button>
+           `;
+              } else {
+                // Show error message
+                document.getElementById('batchUpdateResults').innerHTML = `
+             <div class="alert alert-danger">
+               <h5>Error</h5>
+               <p>${data.message || 'An error occurred while updating accounts.'}</p>
+             </div>
+           `;
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+
+              // Re-enable button
+              confirmBatchUpdateBtn.disabled = false;
+              confirmBatchUpdateBtn.innerHTML = 'Update Accounts';
+
+              // Show error message
+              document.getElementById('batchUpdateResults').innerHTML = `
+           <div class="alert alert-danger">
+             <h5>Error</h5>
+             <p>An unexpected error occurred while updating accounts.</p>
+           </div>
+         `;
+            });
+        });
+      }
+      $(document).on('click', '.add-products-by-link', function() {
+        const accountId = $(this).data('id');
+        const username = $(this).data('username');
+
+        $('#addProductsAccountName').text(username);
+        $('#productLinks').val('');
+        $('#linkCount').text('0');
+        $('#addProductsResults').empty();
+        $('#addProductsProgress').addClass('d-none');
+
+        // Lưu accountId vào nút xác nhận
+        $('#confirmAddProducts').data('account-id', accountId);
+
+        // Hiển thị modal
+        $('#addProductsByLinkModal').modal('show');
+      });
+
+      // Đếm số link khi người dùng nhập
+      $(document).on('input', '#productLinks', function() {
+        const text = $(this).val();
+        const links = text.split('\n').filter(link => link.trim() !== '');
+        $('#linkCount').text(links.length);
+      });
+
+      // Xử lý nút xác nhận thêm sản phẩm
+      $(document).on('click', '#confirmAddProducts', function() {
+        const accountId = $(this).data('account-id');
+        const text = $('#productLinks').val();
+        const links = text.split('\n').filter(link => link.trim() !== '');
+
+        if (links.length === 0) {
+          alert('Vui lòng nhập ít nhất một link sản phẩm!');
+          return;
+        }
+
+        // Hiển thị thanh tiến trình
+        $('#addProductsProgress').removeClass('d-none');
+        $('#addProductsResults').html('<div class="alert alert-info">Đang xử lý...</div>');
+
+        // Gửi request lên server
+        $.ajax({
+          url: '/shopee-accounts/add-products',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            accountId: accountId,
+            productLinks: links
+          }),
+          success: function(response) {
+            $('#addProductsProgress').addClass('d-none');
+            $('#addProductsResults').html(`
+              <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> Đã thêm thành công ${response.results.success.length || 0} sản phẩm.
+                ${response.results.failed.length ? `<br><i class="fas fa-times-circle text-danger"></i> Không thể thêm ${response.results.failed.length} sản phẩm.` : ''}
+                ${response.results.duplicates.length? `<br><i class="fas fa-exclamation-triangle text-warning"></i> Trùng ${response.results.duplicates.length || 0} sản phẩm.` : ''}
+              </div>
+            `);
+          },
+          error: function(error) {
+            $('#addProductsProgress').addClass('d-none');
+            $('#addProductsResults').html(`
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i> Đã xảy ra lỗi khi thêm sản phẩm: ${error.responseJSON?.message || 'Lỗi không xác định'}
+              </div>
+            `);
+          }
+        });
+      });
+
+      // Xử lý nút xác nhận thêm sản phẩm
+      $(document).on('click', '#confirmAddProducts', function() {
+        const accountId = $(this).data('account-id');
+        const text = $('#productLinks').val();
+        const links = text.split('\n').filter(link => link.trim() !== '');
+
+        if (links.length === 0) {
+          alert('Vui lòng nhập ít nhất một link sản phẩm!');
+          return;
+        }
+
+        // Hiển thị thanh tiến trình
+        $('#addProductsProgress').removeClass('d-none');
+        $('#addProductsResults').html('<div class="alert alert-info">Đang xử lý...</div>');
+
+        // Gửi request lên server
+        $.ajax({
+          url: '/shopee-accounts/add-products',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            accountId: accountId,
+            productLinks: links
+          }),
+          success: function(response) {
+            $('#addProductsProgress').addClass('d-none');
+            $('#addProductsResults').html(`
+              <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> Đã thêm thành công ${response.addedCount || 0} sản phẩm.
+                ${response.failedCount ? `<br>Không thể thêm ${response.failedCount} sản phẩm.` : ''}
+              </div>
+            `);
+          },
+          error: function(error) {
+            $('#addProductsProgress').addClass('d-none');
+            $('#addProductsResults').html(`
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle"></i> Đã xảy ra lỗi khi thêm sản phẩm: ${error.responseJSON?.message || 'Lỗi không xác định'}
+              </div>
+            `);
+          }
+        });
+      });
+      // Transfer products functionality
+      $(document).on('click', '.transfer-products', function() {
+        const sourceAccountId = $(this).data('id');
+        const sourceUsername = $(this).data('username');
+
+        $('#sourceAccountName').text(sourceUsername);
+        $('#targetAccount').val('');
+        $('#transferResults').empty();
+        $('#transferProgress').addClass('d-none');
+
+        // Lưu sourceAccountId vào nút xác nhận
+        $('#confirmTransfer').data('source-account-id', sourceAccountId);
+        // ... existing code ...
+       
+        // Hiển thị modal
+        $('#transferProductsModal').modal('show');
+      });
+      // Xử lý khi đóng modal chuyển sản phẩm
+      $('#transferProductsModal').on('hidden.bs.modal', function() {
+        // Destroy Select2 để tránh xung đột khi mở lại modal
+        if ($('#targetAccount').data('select2')) {
+          $('#targetAccount').select2('destroy');
+        }
+      });
+      // Xử lý nút xác nhận chuyển sản phẩm
+      $(document).on('click', '#confirmTransfer', function() {
+        const sourceAccountId = $(this).data('source-account-id');
+        const targetAccountId = $('#targetAccount').val();
+
+        if (!targetAccountId) {
+          alert('Vui lòng chọn tài khoản đích!');
+          return;
+        }
+
+        if (!confirm('Bạn có chắc chắn muốn chuyển tất cả sản phẩm sang tài khoản đã chọn? Hành động này không thể hoàn tác.')) {
+          return;
+        }
+
+        // Hiển thị thanh tiến trình
+        $('#transferProgress').removeClass('d-none');
+        $('#transferResults').html('<div class="alert alert-info">Đang xử lý...</div>');
+
+        // Disable nút xác nhận
+        $(this).prop('disabled', true);
+        $(this).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Đang chuyển...');
+
+        // Gửi request lên server
+        $.ajax({
+          url: '/shopee-accounts/transfer-products',
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({
+            sourceAccountId: sourceAccountId,
+            targetAccountId: targetAccountId
+          }),
+          success: function(response) {
+            $('#transferProgress').addClass('d-none');
+            $('#transferResults').html(`
+                    <div class="alert alert-success">
+                      <i class="fas fa-check-circle"></i> ${response.message}
+                    </div>
+                    <button class="btn btn-primary" onclick="window.location.reload()">
+                      <i class="fas fa-sync"></i> Làm mới trang
+                    </button>
+                  `);
+
+            // Re-enable nút xác nhận
+            $('#confirmTransfer').prop('disabled', false);
+            $('#confirmTransfer').html('Chuyển sản phẩm');
+          },
+          error: function(error) {
+            $('#transferProgress').addClass('d-none');
+            $('#transferResults').html(`
+                    <div class="alert alert-danger">
+                      <i class="fas fa-exclamation-circle"></i> Đã xảy ra lỗi khi chuyển sản phẩm: ${error.responseJSON?.message || 'Lỗi không xác định'}
+                    </div>
+                  `);
+
+            // Re-enable nút xác nhận
+            $('#confirmTransfer').prop('disabled', false);
+            $('#confirmTransfer').html('Chuyển sản phẩm');
+          }
+        });
+      });
+
+    // Stream status polling for real-time updates
+    function updateStreamStatus(accountId, status) {
+      const row = $(`tr[data-account-id="${accountId}"]`);
+      const actionsCell = row.find('.action-buttons');
+      const streamStatusCell = row.find('.stream-status');
+      
+      // Update stream status column
+      let streamBadge = '';
+      if (status.isActive) {
+        streamBadge = '<span class="badge bg-success stream-badge">Streaming</span>';
+      } else if (status.retryCount > 0) {
+        streamBadge = `<span class="badge bg-warning stream-badge">Retrying (${status.retryCount})</span>`;
+      } else {
+        streamBadge = '<span class="badge bg-secondary stream-badge">Offline</span>';
+      }
+      streamStatusCell.html(streamBadge);
+      
+      // Update action buttons
+      const startBtn = actionsCell.find('.start-live');
+      const endBtn = actionsCell.find('.end-live');
+      
+      if (status.isActive) {
+        // Show end button, hide start button
+        if (startBtn.length) startBtn.remove();
+        if (endBtn.length === 0) {
+          actionsCell.prepend(`
+            <button class="btn btn-sm btn-danger end-live" data-id="${accountId}" data-username="${row.find('.start-live').data('username') || row.find('.end-live').data('username')}" title="End Live">
+              <i class="fas fa-stop"></i>
+            </button>
+          `);
+        }
+      } else {
+        // Show start button, hide end button
+        if (endBtn.length) endBtn.remove();
+        if (startBtn.length === 0) {
+          actionsCell.prepend(`
+            <button class="btn btn-sm btn-success start-live" data-id="${accountId}" data-username="${row.find('.end-live').data('username') || row.data('username')}" title="Start Live">
+              <i class="fas fa-play"></i>
+            </button>
+          `);
+        }
+      }
+      
+      // Re-attach event handlers for new buttons
+      attachStreamButtonHandlers();
+    }
+
+    function attachStreamButtonHandlers() {
+      // Start Live button handler
+      $('.start-live').off('click').on('click', function() {
+        const accountId = $(this).data('id');
+        const username = $(this).data('username');
+        
+        
+        
+        if (confirm(`Bạn có chắc chắn muốn bắt đầu stream cho tài khoản ${username} với video ${videoPath}?`)) {
+          $.ajax({
+            url: `/shopee-accounts/start-live/${accountId}`,
+            method: 'POST',
+            contentType: 'application/json',
+            data: null,
+            success: function(response) {
+              if (response.success) {
+                alert(`✅ Stream started for ${username}`);
+                // Immediately update status
+                updateStreamStatus(accountId, { isActive: true, retryCount: 0 });
+              } else {
+                alert(`❌ Failed to start stream: ${response.message}`);
+              }
+            },
+            error: function(error) {
+              alert(`❌ Error starting stream: ${error.responseJSON?.message || 'Unknown error'}`);
+            }
+          });
+        }
+      });
+
+      // End Live button handler
+      $('.end-live').off('click').on('click', function() {
+        const accountId = $(this).data('id');
+        const username = $(this).data('username');
+        
+        if (confirm(`Bạn có chắc chắn muốn dừng stream cho tài khoản ${username}?`)) {
+          $.ajax({
+            url: `/shopee-accounts/end-live/${accountId}`,
+            method: 'POST',
+            contentType: 'application/json',
+            success: function(response) {
+              if (response.success) {
+                alert(`⏹️ Stream ended for ${username}`);
+                // Immediately update status
+                updateStreamStatus(accountId, { isActive: false, retryCount: 0 });
+              } else {
+                alert(`❌ Failed to end stream: ${response.message}`);
+              }
+            },
+            error: function(error) {
+              alert(`❌ Error ending stream: ${error.responseJSON?.message || 'Unknown error'}`);
+            }
+          });
+        }
+      });
+    }
+
+    // Poll stream status every 5 seconds
+    function pollStreamStatus() {
+      const accountIds = [];
+      $('#accountsTable tbody tr').each(function() {
+        const accountId = $(this).data('account-id');
+        if (accountId) accountIds.push(accountId);
+      });
+
+      if (accountIds.length === 0) return;
+
+      // Get all active streams at once for efficiency
+      $.ajax({
+        url: '/shopee-accounts/active-streams',
+        method: 'GET',
+        success: function(response) {
+          if (response.success) {
+            const activeStreams = response.data.activeStreams;
+            
+            // Update all accounts
+            accountIds.forEach(accountId => {
+              const isActive = activeStreams.includes(accountId);
+              const status = {
+                isActive: isActive,
+                retryCount: 0 // Will be enhanced later
+              };
+              updateStreamStatus(accountId, status);
+            });
+          }
+        },
+        error: function(error) {
+          console.error('❌ Error polling stream status:', error);
+        }
+      });
+    }
+
+    // Initialize stream status polling
+    function initializeStreamPolling() {
+      // Initial status update
+      pollStreamStatus();
+      
+      // Set up periodic polling every 5 seconds
+      setInterval(pollStreamStatus, 5000);
+    }
+
+    // Load video files for selectors
+    function loadVideoSelectors() {
+      fetch('/shopee-accounts/videos')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const videoSelectors = document.querySelectorAll('.video-selector');
+            videoSelectors.forEach(selector => {
+              const currentValue = selector.value;
+              selector.innerHTML = '<option value="">Chọn video</option>';
+              
+              data.data.forEach(video => {
+                const option = document.createElement('option');
+                option.value = video.filename;
+                option.textContent = video.filename;
+                option.selected = (video.filename === currentValue);
+                selector.appendChild(option);
+              });
+            });
+          }
+        })
+        .catch(error => {
+          console.error('❌ Error loading video selectors:', error);
+        });
+    }
+
+    // Handle video selector change
+    $(document).on('change', '.video-selector', function() {
+      const accountId = $(this).data('account-id');
+      const videoFile = $(this).val();
+      
+      if (videoFile) {
+        fetch(`/shopee-accounts/${accountId}/video`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ videoFile: videoFile })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Show success notification
+            const notification = $(`
+              <div class="alert alert-success alert-sm" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 8px 12px; font-size: 12px;">
+                Video đã được lưu: ${videoFile}
+              </div>
+            `);
+            $('body').append(notification);
+            setTimeout(() => notification.fadeOut(() => notification.remove()), 2000);
+          } else {
+            alert('Lỗi: ' + data.message);
+            $(this).val(''); // Reset selector
+          }
+        })
+        .catch(error => {
+          console.error('❌ Error updating video:', error);
+          alert('Đã xảy ra lỗi khi cập nhật video.');
+          $(this).val(''); // Reset selector
+        });
+      }
+    });
+
+    // Attach handlers on page load
+    $(document).ready(function() {
+      attachStreamButtonHandlers();
+      initializeStreamPolling();
+      loadVideoSelectors();
+    });
+
+    // Load video files for selectors
+    function loadVideoSelectors() {
+      fetch('/shopee-accounts/videos')
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const videoSelectors = document.querySelectorAll('.video-selector');
+            videoSelectors.forEach(selector => {
+              const currentValue = selector.value;
+              selector.innerHTML = '<option value="">Chọn video</option>';
+              
+              data.data.forEach(video => {
+                const option = document.createElement('option');
+                option.value = video.filename;
+                option.textContent = video.filename;
+                option.selected = (video.filename === currentValue);
+                selector.appendChild(option);
+              });
+            });
+          }
+        })
+        .catch(error => {
+          console.error('❌ Error loading video selectors:', error);
+        });
+    }
+
+    // Handle video selector change
+    $(document).on('change', '.video-selector', function() {
+      const accountId = $(this).data('account-id');
+      const videoFile = $(this).val();
+      
+      if (videoFile) {
+        fetch(`/shopee-accounts/${accountId}/video`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ videoFile: videoFile })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Show success notification
+            const notification = $(`
+              <div class="alert alert-success alert-sm" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 8px 12px; font-size: 12px;">
+                Video đã được lưu: ${videoFile}
+              </div>
+            `);
+            $('body').append(notification);
+            setTimeout(() => notification.fadeOut(() => notification.remove()), 2000);
+          } else {
+            alert('Lỗi: ' + data.message);
+            $(this).val(''); // Reset selector
+          }
+        })
+        .catch(error => {
+          console.error('❌ Error updating video:', error);
+          alert('Đã xảy ra lỗi khi cập nhật video.');
+          $(this).val(''); // Reset selector
+        });
+      }
+    });
+
+
+  </script>
+</body>
+
+</html>

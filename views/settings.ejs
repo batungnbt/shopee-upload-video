@@ -1,0 +1,109 @@
+<div class="container-fluid py-4 app-page">
+  <section class="app-hero">
+    <span class="app-eyebrow">
+      <i class="fas fa-sliders" aria-hidden="true"></i>
+      System Rules
+    </span>
+    <h2>Thiết lập ngưỡng chọn sản phẩm trong một màn hình gọn hơn.</h2>
+    <p>Điều chỉnh các ngưỡng sold, commission, rating, giá và like để chuẩn hoá cách hệ thống chọn sản phẩm phù hợp.</p>
+  </section>
+
+  <div class="row">
+    <div class="col-md-9 col-lg-8 mx-auto">
+      <div class="card surface-card">
+        <div class="card-header">
+          <div class="section-heading">
+            <div>
+              <h5 class="mb-0">System Settings</h5>
+              <p>Các giá trị dưới đây ảnh hưởng trực tiếp tới điều kiện lọc sản phẩm.</p>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <form action="/settings/update" method="POST">
+            <div class="mb-4">
+              <h6 class="fw-bold">Product Selection Criteria</h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="min_sold" class="form-label">Minimum Sold Items</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="min_sold" name="min_sold" 
+                           value="<%= settings.min_sold %>" min="0" required>
+                    <span class="input-group-text">items</span>
+                  </div>
+                  <small class="text-muted">Products must have at least this many sales</small>
+                </div>
+                
+                <div class="col-md-6">
+                  <label for="min_default_commission_rate" class="form-label">Minimum Commission Rate</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="min_default_commission_rate" 
+                           name="min_default_commission_rate" value="<%= settings.min_default_commission_rate %>" 
+                           min="0" step="0.1" required>
+                    <span class="input-group-text">%</span>
+                  </div>
+                  <small class="text-muted">Products must have at least this commission rate</small>
+                </div>
+                
+                <div class="col-md-6">
+                  <label for="min_rating_star" class="form-label">Minimum Rating Star</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="min_rating_star" name="min_rating_star" 
+                           value="<%= settings.min_rating_star %>" min="0" max="5" step="0.1" required>
+                    <span class="input-group-text">★</span>
+                  </div>
+                  <small class="text-muted">Minimum product rating required</small>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="min_shop_rating" class="form-label">Minimum Shop Rating</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="min_shop_rating" name="min_shop_rating" 
+                           value="<%= settings.min_shop_rating %>" min="0" max="5" step="0.1" required>
+                    <span class="input-group-text">★</span>
+                  </div>
+                  <small class="text-muted">Minimum shop rating required</small>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="min_price" class="form-label">Minimum Price</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="min_price" name="min_price" 
+                           value="<%= settings.min_price %>" min="0" required>
+                    <span class="input-group-text">đ</span>
+                  </div>
+                  <small class="text-muted">Minimum product price required</small>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="max_price" class="form-label">Maximum Price</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="max_price" name="max_price" 
+                           value="<%= settings.max_price %>" min="0" required>
+                    <span class="input-group-text">đ</span>
+                  </div>
+                  <small class="text-muted">Maximum product price allowed</small>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="min_liked_count" class="form-label">Minimum Likes</label>
+                  <div class="input-group">
+                    <input type="number" class="form-control" id="min_liked_count" name="min_liked_count" 
+                           value="<%= settings.min_liked_count %>" min="0" required>
+                    <span class="input-group-text">likes</span>
+                  </div>
+                  <small class="text-muted">Minimum number of likes required</small>
+                </div>
+              </div>
+            </div>
+            
+            <div class="d-flex justify-content-between mt-4">
+              <a href="/dashboard" class="btn btn-secondary">Back to Dashboard</a>
+              <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

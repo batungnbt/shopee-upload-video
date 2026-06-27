@@ -1,0 +1,111 @@
+<div class="container-fluid">
+  <h1 class="mb-4">Tạo tài khoản mới</h1>
+  
+  <% if (locals.error && error.length > 0) { %>
+    <div class="alert alert-danger" role="alert">
+      <%= error %>
+    </div>
+  <% } %>
+  
+  <div class="card">
+    <div class="card-body">
+      <form action="/admin/accounts" method="POST">
+        <div class="mb-3">
+          <label for="username" class="form-label">Tên đăng nhập</label>
+          <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="password" class="form-label">Mật khẩu</label>
+          <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="role" class="form-label">Vai trò</label>
+          <select class="form-select" id="role" name="role">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="teamMode" class="form-label">Team</label>
+          <select class="form-select" id="teamMode" name="teamMode">
+            <option value="create_by_username" selected>Tạo team mới theo username (mặc định)</option>
+            <option value="none">Không gán team</option>
+          </select>
+        </div>
+
+        <div class="mb-3" id="teamNameWrapper">
+          <label for="teamName" class="form-label">Tên team mới</label>
+          <input type="text" class="form-control" id="teamName" name="teamName" readonly>
+          <small class="text-muted">Tên team sẽ tự động lấy theo username đã nhập</small>
+        </div>
+
+        <div class="mb-3">
+          <label for="expiredAt" class="form-label">Thời gian hết hạn</label>
+          <input type="datetime-local" class="form-control" id="expiredAt" name="expiredAt">
+          <small class="text-muted">Để trống nếu tài khoản không giới hạn thời gian</small>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+          <a href="/admin/accounts" class="btn btn-secondary">Hủy</a>
+          <button type="submit" class="btn btn-primary">Tạo tài khoản</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Add form submission debugging
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const usernameInput = document.getElementById('username');
+    const teamModeSelect = document.getElementById('teamMode');
+    const teamNameInput = document.getElementById('teamName');
+    const teamNameWrapper = document.getElementById('teamNameWrapper');
+
+    function syncTeamNameFromUsername() {
+      if (!teamNameInput || !usernameInput) return;
+      teamNameInput.value = (usernameInput.value || '').trim();
+    }
+
+    function toggleTeamNameInput() {
+      if (!teamModeSelect || !teamNameInput || !teamNameWrapper) return;
+      const shouldCreateByUsername = teamModeSelect.value === 'create_by_username';
+      teamNameWrapper.classList.toggle('d-none', !shouldCreateByUsername);
+      teamNameInput.disabled = !shouldCreateByUsername;
+      if (shouldCreateByUsername) {
+        syncTeamNameFromUsername();
+      } else {
+        teamNameInput.value = '';
+      }
+    }
+
+    if (usernameInput) {
+      usernameInput.addEventListener('input', syncTeamNameFromUsername);
+      syncTeamNameFromUsername();
+    }
+
+    if (teamModeSelect) {
+      teamModeSelect.addEventListener('change', toggleTeamNameInput);
+      toggleTeamNameInput();
+    }
+    
+    form.addEventListener('submit', function(e) {
+      console.log('Form submitted');
+      
+      // Log form data
+      const formData = new FormData(form);
+      for (let pair of formData.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
+      }
+    });
+  });
+</script>

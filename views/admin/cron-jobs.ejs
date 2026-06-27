@@ -1,0 +1,258 @@
+<div class="container-fluid">
+  <h1 class="mb-4">Quản lý Cron API</h1>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong>Tạo Cron mới</strong>
+    </div>
+    <div class="card-body">
+      <form method="POST" action="/admin/cron-jobs">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <input class="form-control" name="name" placeholder="Tên cron" required>
+          </div>
+          <div class="col-md-4">
+            <input class="form-control" name="apiUrl" placeholder="API URL" required>
+          </div>
+          <div class="col-md-2">
+            <select class="form-select" name="method">
+              <option>GET</option>
+              <option>POST</option>
+              <option>PUT</option>
+              <option>PATCH</option>
+              <option>DELETE</option>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <input type="number" min="5" max="86400" class="form-control" name="intervalSeconds" placeholder="Giây" value="60" required>
+          </div>
+          <div class="col-md-1">
+            <input type="number" min="1000" max="120000" class="form-control" name="timeoutMs" placeholder="Timeout" value="15000" required>
+          </div>
+          <div class="col-md-1 d-flex align-items-center">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="active" checked id="activeDefault">
+              <label class="form-check-label" for="activeDefault">On</label>
+            </div>
+          </div>
+        </div>
+        <div class="row g-2 mt-2">
+          <div class="col-md-6">
+            <textarea class="form-control" name="headers" rows="2" placeholder='Headers JSON, ví dụ: {"Authorization":"Bearer ..."}'></textarea>
+          </div>
+          <div class="col-md-6">
+            <textarea class="form-control" name="body" rows="2" placeholder='Body JSON, ví dụ: {"key":"value"}'></textarea>
+          </div>
+        </div>
+        <div class="mt-2">
+          <button class="btn btn-success" type="submit">Tạo Cron</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-header">
+      <strong>Danh sách Cron</strong>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Tên</th>
+              <th>URL</th>
+              <th>Method</th>
+              <th>Chu kỳ</th>
+              <th>Trạng thái</th>
+              <th>Lần chạy gần nhất</th>
+              <th>KQ gần nhất</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% jobs.forEach(job => { %>
+              <tr>
+                <td><strong><%= job.name %></strong></td>
+                <td><code><%= job.apiUrl %></code></td>
+                <td><span class="badge bg-dark"><%= job.method %></span></td>
+                <td><%= job.intervalSeconds %>s</td>
+                <td>
+                  <span class="badge <%= job.active ? 'bg-success' : 'bg-secondary' %>">
+                    <%= job.active ? 'Đang bật' : 'Đang tắt' %>
+                  </span>
+                  <% if (job.running) { %>
+                    <span class="badge bg-warning text-dark">Running</span>
+                  <% } %>
+                </td>
+                <td><%= job.lastRunAt ? new Date(job.lastRunAt).toLocaleString('vi-VN') : '-' %></td>
+                <td>
+                  <% if (job.lastStatus) { %>
+                    <span class="badge <%= job.lastStatus === 'success' ? 'bg-success' : 'bg-danger' %>">
+                      <%= job.lastStatus %> (<%= job.lastHttpStatus || 0 %>)
+                    </span>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-outline-primary run-now-btn" data-id="<%= job._id %>">Run now</button>
+                    <button class="btn btn-sm btn-outline-warning toggle-btn" data-id="<%= job._id %>"><%= job.active ? 'Pause' : 'Resume' %></button>
+                    <button class="btn btn-sm btn-outline-danger delete-btn" data-id="<%= job._id %>" data-name="<%= job.name %>">Xóa</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="8">
+                  <form class="row g-2 align-items-center" method="POST" action="/admin/cron-jobs/<%= job._id %>/update">
+                    <div class="col-md-2"><input class="form-control form-control-sm" name="name" value="<%= job.name %>" required></div>
+                    <div class="col-md-4"><input class="form-control form-control-sm" name="apiUrl" value="<%= job.apiUrl %>" required></div>
+                    <div class="col-md-1">
+                      <select class="form-select form-select-sm" name="method">
+                        <option <%= job.method === 'GET' ? 'selected' : '' %>>GET</option>
+                        <option <%= job.method === 'POST' ? 'selected' : '' %>>POST</option>
+                        <option <%= job.method === 'PUT' ? 'selected' : '' %>>PUT</option>
+                        <option <%= job.method === 'PATCH' ? 'selected' : '' %>>PATCH</option>
+                        <option <%= job.method === 'DELETE' ? 'selected' : '' %>>DELETE</option>
+                      </select>
+                    </div>
+                    <div class="col-md-1"><input type="number" min="5" max="86400" class="form-control form-control-sm" name="intervalSeconds" value="<%= job.intervalSeconds %>" required></div>
+                    <div class="col-md-1"><input type="number" min="1000" max="120000" class="form-control form-control-sm" name="timeoutMs" value="<%= job.timeoutMs %>" required></div>
+                    <div class="col-md-1 d-flex align-items-center">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="active" <%= job.active ? 'checked' : '' %>>
+                      </div>
+                    </div>
+                    <div class="col-md-2"><button class="btn btn-sm btn-outline-success w-100">Lưu</button></div>
+                    <div class="col-md-6"><textarea class="form-control form-control-sm mt-2" name="headers" rows="2" placeholder='Headers JSON'><%= job.headers || '' %></textarea></div>
+                    <div class="col-md-6"><textarea class="form-control form-control-sm mt-2" name="body" rows="2" placeholder='Body JSON'><%= job.body || '' %></textarea></div>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+            <% if (!jobs.length) { %>
+              <tr><td colspan="8" class="text-center text-muted py-4">Chưa có cron nào</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>Log thực thi</strong>
+      <button class="btn btn-sm btn-outline-secondary" id="refreshLogsBtn">Refresh</button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped table-sm mb-0" id="logsTable">
+          <thead>
+            <tr>
+              <th>Thời gian</th>
+              <th>Cron</th>
+              <th>Kết quả</th>
+              <th>HTTP</th>
+              <th>Duration</th>
+              <th>Lỗi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% logs.forEach(log => { %>
+              <tr>
+                <td><%= new Date(log.createdAt).toLocaleString('vi-VN') %></td>
+                <td><%= log.job ? log.job.name : '-' %></td>
+                <td><span class="badge <%= log.success ? 'bg-success' : 'bg-danger' %>"><%= log.success ? 'success' : 'failed' %></span></td>
+                <td><%= log.httpStatus || 0 %></td>
+                <td><%= log.durationMs %> ms</td>
+                <td><span class="text-danger"><%= log.error || '' %></span></td>
+              </tr>
+            <% }) %>
+            <% if (!logs.length) { %>
+              <tr><td colspan="6" class="text-center text-muted py-4">Chưa có log</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const runNowButtons = document.querySelectorAll('.run-now-btn');
+    const toggleButtons = document.querySelectorAll('.toggle-btn');
+    const deleteButtons = document.querySelectorAll('.delete-btn');
+    const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+
+    runNowButtons.forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const id = this.getAttribute('data-id');
+        this.disabled = true;
+        try {
+          await fetch(`/admin/cron-jobs/${id}/run`, { method: 'POST' });
+          location.reload();
+        } catch (e) {
+          alert('Run now thất bại');
+        } finally {
+          this.disabled = false;
+        }
+      });
+    });
+
+    toggleButtons.forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const id = this.getAttribute('data-id');
+        try {
+          await fetch(`/admin/cron-jobs/${id}/toggle`, { method: 'POST' });
+          location.reload();
+        } catch (e) {
+          alert('Toggle thất bại');
+        }
+      });
+    });
+
+    deleteButtons.forEach(btn => {
+      btn.addEventListener('click', async function() {
+        const id = this.getAttribute('data-id');
+        const name = this.getAttribute('data-name');
+        if (!confirm(`Xóa cron "${name}"?`)) return;
+        try {
+          await fetch(`/admin/cron-jobs/${id}`, { method: 'DELETE' });
+          location.reload();
+        } catch (e) {
+          alert('Xóa cron thất bại');
+        }
+      });
+    });
+
+    refreshLogsBtn.addEventListener('click', async function() {
+      try {
+        const res = await fetch('/admin/cron-jobs/logs?limit=200');
+        const data = await res.json();
+        if (!data.success) return;
+        const tbody = document.querySelector('#logsTable tbody');
+        tbody.innerHTML = '';
+        if (!data.data.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Chưa có log</td></tr>';
+          return;
+        }
+        data.data.forEach(log => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${new Date(log.createdAt).toLocaleString('vi-VN')}</td>
+            <td>${log.job?.name || '-'}</td>
+            <td><span class="badge ${log.success ? 'bg-success' : 'bg-danger'}">${log.success ? 'success' : 'failed'}</span></td>
+            <td>${log.httpStatus || 0}</td>
+            <td>${log.durationMs} ms</td>
+            <td><span class="text-danger">${log.error || ''}</span></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        alert('Không tải được log');
+      }
+    });
+  });
+</script>

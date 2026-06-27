@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Import Products</title>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+  </head>
+  <body>
+    <h2>📦 Import Products</h2>
+
+    <form action="/import-products" method="POST" enctype="multipart/form-data">
+      <label>Danh mục:</label>
+      <select name="shopee_category_id" id="category-select" required>
+        <option value="">Chọn Danh Mục</option>
+        <% categories.forEach(cat => { %>
+        <option value="<%= cat.shopeeCategoryId %>"><%= cat.name %> (<%= cat.categoryPath %>)</option>
+        <% }) %>
+      </select>
+      <br /><br />
+
+      <label>File JSON sản phẩm:</label>
+      <input
+        type="file"
+        name="productFile"
+        accept=".json"
+        required
+      /><br /><br />
+
+      <button type="submit">🚀 Import</button>
+    </form>
+
+    <% if (log.length > 0) { %>
+    <hr />
+    <pre><%= log.join("\n") %></pre>
+    <% } %>
+
+    <!-- Script khởi tạo Select2 -->
+    <script>
+      $(document).ready(function () {
+        if ($.fn.select2) {
+          console.log("✅ Select2 loaded successfully.");
+          $("#category-select").select2({
+            placeholder: "Chọn danh mục...",
+            allowClear: true,
+          });
+        } else {
+          console.error("❌ Select2 not loaded.");
+        }
+      });
+    </script>
+  </body>
+</html>

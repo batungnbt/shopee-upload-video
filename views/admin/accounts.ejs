@@ -1,0 +1,200 @@
+<div class="container-fluid">
+  <h1 class="mb-4">Quản lý tài khoản</h1>
+  
+  <div class="mb-3">
+    <a href="/admin/accounts/new" class="btn btn-success">
+      <i class="fas fa-plus"></i> Tạo tài khoản mới
+    </a>
+  </div>
+  
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Vai trò</th>
+              <th>Team</th>
+              <th>Số TK Shopee</th>
+              <th>Tổng video upload</th>
+              <th>Video upload hôm qua</th>
+              <th>Trạng thái</th>
+              <th>Thời gian hết hạn</th>
+              <th>Ngày tạo</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% users.forEach(user => { %>
+              <tr>
+                <td><%= user.username %></td>
+                <td><%= user.role === 'admin' ? 'Admin' : (user.role === 'super_admin' ? 'Super Admin' : 'User') %></td>
+                <td><%= user.team ? user.team.name : 'Chưa phân team' %></td>
+                <td>
+                  <% const teamId = user.team && user.team._id ? String(user.team._id) : ''; %>
+                  <%= teamId ? ((shopeeAccountCountByTeam[teamId] && shopeeAccountCountByTeam[teamId].count) || 0) : 0 %>
+                </td>
+                <td>
+                  <%= (teamId ? ((shopeeAccountCountByTeam[teamId] && shopeeAccountCountByTeam[teamId].totalVideosUploaded) || 0) : 0).toLocaleString('vi-VN') %>
+                </td>
+                <td>
+                  <%= (teamId ? ((shopeeAccountCountByTeam[teamId] && shopeeAccountCountByTeam[teamId].yesterdayVideosUploaded) || 0) : 0).toLocaleString('vi-VN') %>
+                </td>
+                <td>
+                  <span class="badge <%= user.active ? 'bg-success' : 'bg-danger' %>">
+                    <%= user.active ? 'Hoạt động' : 'Đã khóa' %>
+                  </span>
+                </td>
+                <td>
+                  <% if (user.expiredAt) { %>
+                    <div><%= new Date(user.expiredAt).toLocaleString('vi-VN') %></div>
+                    <small class="<%= new Date(user.expiredAt) <= new Date() ? 'text-danger' : 'text-success' %>">
+                      <%= new Date(user.expiredAt) <= new Date() ? 'Đã hết hạn' : 'Còn hạn' %>
+                    </small>
+                  <% } else { %>
+                    <span class="text-muted">Không giới hạn</span>
+                  <% } %>
+                </td>
+                <td><%= new Date(user.createdAt).toLocaleString('vi-VN') %></td>
+                <td>
+                  <button class="btn btn-sm btn-warning extend-user" data-id="<%= user._id %>" data-username="<%= user.username %>">Gia hạn</button>
+                  <a href="/admin/accounts/<%= user._id %>/edit" class="btn btn-sm btn-primary">Sửa</a>
+                  <% if (user.role !== 'admin') { %>
+                    <button class="btn btn-sm btn-danger delete-user" data-id="<%= user._id %>" data-username="<%= user.username %>">Xóa</button>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-user');
+    const extendButtons = document.querySelectorAll('.extend-user');
+
+    extendButtons.forEach(button => {
+      button.addEventListener('click', async function() {
+        const userId = this.getAttribute('data-id');
+        const username = this.getAttribute('data-username') || '';
+
+        const result = await Swal.fire({
+          title: `Gia hạn tài khoản "${username}"`,
+          text: 'Nhập số ngày muốn gia hạn',
+          input: 'number',
+          inputAttributes: {
+            min: 1,
+            step: 1
+          },
+          inputValue: 30,
+          showCancelButton: true,
+          confirmButtonText: 'Gia hạn',
+          cancelButtonText: 'Hủy',
+          inputValidator: (value) => {
+            if (!value || Number(value) <= 0) {
+              return 'Vui lòng nhập số ngày hợp lệ';
+            }
+            return null;
+          }
+        });
+
+        if (!result.isConfirmed) return;
+
+        fetch(`/admin/accounts/${userId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ extendDays: Number(result.value) })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            Swal.fire({
+              title: 'Thành công',
+              text: 'Gia hạn tài khoản thành công',
+              icon: 'success',
+              timer: 1200,
+              showConfirmButton: false
+            }).then(() => {
+              window.location.reload();
+            });
+          } else {
+            Swal.fire({
+              title: 'Lỗi',
+              text: data.message || 'Không thể gia hạn tài khoản',
+              icon: 'error'
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          Swal.fire({
+            title: 'Lỗi',
+            text: 'Đã xảy ra lỗi khi gia hạn tài khoản',
+            icon: 'error'
+          });
+        });
+      });
+    });
+    
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', async function() {
+        const userId = this.getAttribute('data-id');
+        const username = this.getAttribute('data-username') || '';
+
+        const confirmResult = await Swal.fire({
+          title: 'Xóa người dùng?',
+          text: `Bạn có chắc chắn muốn xóa người dùng "${username}"?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Xóa',
+          cancelButtonText: 'Hủy'
+        });
+
+        if (confirmResult.isConfirmed) {
+          fetch(`/admin/accounts/${userId}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              Swal.fire({
+                title: 'Thành công',
+                text: 'Xóa người dùng thành công',
+                icon: 'success',
+                timer: 1200,
+                showConfirmButton: false
+              }).then(() => {
+                window.location.reload();
+              });
+            } else {
+              Swal.fire({
+                title: 'Lỗi',
+                text: data.message || 'Không thể xóa người dùng',
+                icon: 'error'
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+              title: 'Lỗi',
+              text: 'Đã xảy ra lỗi khi xóa người dùng',
+              icon: 'error'
+            });
+          });
+        }
+      });
+    });
+  });
+</script>

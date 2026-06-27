@@ -1,0 +1,49 @@
+<div class="container-fluid">
+  <h1 class="mb-4">Chỉnh sửa tài khoản</h1>
+  
+  <div class="card">
+    <div class="card-body">
+      <form action="/admin/accounts/<%= user._id %>" method="POST">
+        <div class="mb-3">
+          <label for="username" class="form-label">Tên đăng nhập</label>
+          <input type="text" class="form-control" id="username" name="username" value="<%= user.username %>" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="email" class="form-label">Email</label>
+          <input type="email" class="form-control" id="email" name="email" value="<%= user.email %>" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="password" class="form-label">Mật khẩu mới (để trống nếu không thay đổi)</label>
+          <input type="password" class="form-control" id="password" name="password">
+        </div>
+        
+        <div class="mb-3">
+          <label for="role" class="form-label">Vai trò</label>
+          <select class="form-select" id="role" name="role">
+            <option value="user" <%= user.role === 'user' ? 'selected' : '' %>>User</option>
+            <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>Admin</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="expiredAt" class="form-label">Thời gian hết hạn</label>
+          <input
+            type="datetime-local"
+            class="form-control"
+            id="expiredAt"
+            name="expiredAt"
+            value="<%= user.expiredAt ? new Date(user.expiredAt.getTime() - user.expiredAt.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '' %>"
+          >
+          <small class="text-muted">Để trống nếu tài khoản không giới hạn thời gian</small>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+          <a href="/admin/accounts" class="btn btn-secondary">Hủy</a>
+          <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

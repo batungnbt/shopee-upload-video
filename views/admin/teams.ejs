@@ -1,0 +1,145 @@
+<div class="container-fluid">
+  <h1 class="mb-4">Quản lý Team</h1>
+  
+  <div class="mb-3">
+    <a href="/admin/teams/new" class="btn btn-success">
+      <i class="fas fa-plus"></i> Tạo Team mới
+    </a>
+  </div>
+  
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>ID Team</th>
+              <th>Tên Team</th>
+              <th>Mô tả</th>
+              <th>Trạng thái</th>
+              <th>Tổng link</th>
+              <th>Ngày tạo</th>
+              <th>Thao tác</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% teams.forEach(team => { %>
+              <tr>
+                <td><code><%= team._id %></code></td>
+                <td><%= team.name %></td>
+                <td><%= team.description || '' %></td>
+                <td>
+                  <span class="badge bg-<%= team.active ? 'success' : 'danger' %>">
+                    <%= team.active ? 'Hoạt động' : 'Không hoạt động' %>
+                  </span>
+                </td>
+                <td>
+                  <span class="team-link-count text-muted" data-team-id="<%= team._id %>">Đang tải...</span>
+                </td>
+                <td><%= new Date(team.createdAt).toLocaleString('vi-VN') %></td>
+                <td>
+                  <a href="/admin/teams/<%= team._id %>/edit" class="btn btn-sm btn-primary">Sửa</a>
+                  <button class="btn btn-sm btn-danger delete-team" data-id="<%= team._id %>" data-name="<%= team.name %>">Xóa</button>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-team');
+    const teamLinkCountElements = document.querySelectorAll('.team-link-count');
+
+    async function loadTeamLinkCounts() {
+      if (!teamLinkCountElements.length) return;
+
+      const teamIds = Array.from(teamLinkCountElements).map(el => el.getAttribute('data-team-id'));
+
+      try {
+        const response = await fetch(`/admin/teams/link-counts?teamIds=${encodeURIComponent(teamIds.join(','))}`);
+        const result = await response.json();
+
+        if (!result.success || !Array.isArray(result.data)) {
+          throw new Error('Invalid link count response');
+        }
+
+        const countMap = new Map(
+          result.data.map(item => [String(item._id), Number(item.totalLinks || 0)])
+        );
+
+        teamLinkCountElements.forEach(el => {
+          const teamId = el.getAttribute('data-team-id');
+          const totalLinks = countMap.get(teamId) || 0;
+          el.textContent = totalLinks.toLocaleString('vi-VN');
+          el.classList.remove('text-muted');
+        });
+      } catch (error) {
+        console.error('Error loading team link counts:', error);
+        teamLinkCountElements.forEach(el => {
+          el.textContent = 'N/A';
+        });
+      }
+    }
+
+    loadTeamLinkCounts();
+    
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', async function() {
+        const teamId = this.getAttribute('data-id');
+        const teamName = this.getAttribute('data-name') || '';
+
+        const confirmResult = await Swal.fire({
+          title: 'Xóa team?',
+          text: `Bạn có chắc chắn muốn xóa team "${teamName}"?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Xóa',
+          cancelButtonText: 'Hủy'
+        });
+
+        if (confirmResult.isConfirmed) {
+          fetch(`/admin/teams/${teamId}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              Swal.fire({
+                title: 'Thành công',
+                text: 'Xóa team thành công',
+                icon: 'success',
+                timer: 1200,
+                showConfirmButton: false
+              }).then(() => {
+                window.location.reload();
+              });
+            } else {
+              Swal.fire({
+                title: 'Lỗi',
+                text: data.message || 'Không thể xóa team',
+                icon: 'error'
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+              title: 'Lỗi',
+              text: 'Đã xảy ra lỗi khi xóa team',
+              icon: 'error'
+            });
+          });
+        }
+      });
+    });
+  });
+</script>

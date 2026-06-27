@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#fff4ee">
+    <title>Đăng nhập</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --brand-primary: #ee4d2d;
+            --brand-secondary: #ff835f;
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-border: rgba(255, 130, 90, 0.18);
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --success: #0f8a4b;
+            --success-bg: #edfdf3;
+            --danger: #b42318;
+            --danger-bg: #fff1f0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text-primary);
+            background:
+                radial-gradient(circle at top left, rgba(238, 77, 45, 0.2), transparent 30%),
+                radial-gradient(circle at right center, rgba(255, 157, 112, 0.16), transparent 26%),
+                linear-gradient(135deg, #fff8f5 0%, #fff1ea 48%, #ffe5dc 100%);
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .login-shell {
+            width: min(1080px, 100%);
+            min-height: min(740px, calc(100vh - 48px));
+            display: grid;
+            grid-template-columns: minmax(0, 1.12fr) minmax(360px, 440px);
+            background: rgba(255, 255, 255, 0.44);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 30px 70px rgba(184, 68, 30, 0.18);
+        }
+
+        .login-hero {
+            position: relative;
+            padding: 48px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background:
+                linear-gradient(160deg, rgba(238, 77, 45, 0.96) 0%, rgba(255, 133, 84, 0.92) 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .login-hero::before,
+        .login-hero::after {
+            content: "";
+            position: absolute;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            pointer-events: none;
+        }
+
+        .login-hero::before {
+            width: 360px;
+            height: 360px;
+            top: -120px;
+            right: -110px;
+        }
+
+        .login-hero::after {
+            width: 220px;
+            height: 220px;
+            bottom: -70px;
+            left: -60px;
+        }
+
+        .hero-brand,
+        .hero-content,
+        .hero-footnote {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .hero-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+        }
+
+        .hero-content h1 {
+            margin: 0 0 16px;
+            font-size: clamp(2.25rem, 4vw, 4rem);
+            line-height: 1.02;
+            letter-spacing: -0.04em;
+            text-wrap: balance;
+        }
+
+        .hero-content p {
+            max-width: 30rem;
+            margin: 0;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: rgba(255, 255, 255, 0.84);
+        }
+
+        .hero-points {
+            display: grid;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .hero-point {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.92);
+            font-size: 0.95rem;
+        }
+
+        .hero-point i {
+            width: 20px;
+            text-align: center;
+        }
+
+        .hero-footnote {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.92rem;
+        }
+
+        .login-panel {
+            background: var(--surface);
+            padding: 44px 36px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .panel-intro {
+            margin-bottom: 28px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(238, 77, 45, 0.08);
+            color: var(--brand-primary);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        h2 {
+            margin: 16px 0 8px;
+            font-size: 2rem;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            text-wrap: balance;
+        }
+
+        .panel-intro p {
+            margin: 0;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        form {
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-group {
+            display: grid;
+            gap: 8px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.94rem;
+        }
+
+        .input-with-icon {
+            position: relative;
+        }
+
+        .input-with-icon i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            transition: color 0.2s ease;
+            pointer-events: none;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            min-height: 52px;
+            padding: 14px 16px 14px 44px;
+            border: 1px solid rgba(107, 114, 128, 0.18);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.96);
+            font-size: 0.96rem;
+            color: var(--text-primary);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: rgba(238, 77, 45, 0.58);
+            box-shadow: 0 0 0 4px rgba(238, 77, 45, 0.12);
+            outline: none;
+            background: #ffffff;
+        }
+
+        input[type="text"]:focus + i,
+        input[type="password"]:focus + i {
+            color: var(--brand-primary);
+        }
+
+        input::placeholder {
+            color: #9ca3af;
+        }
+
+        input:focus-visible,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 3px solid rgba(238, 77, 45, 0.18);
+            outline-offset: 2px;
+        }
+
+        button {
+            width: 100%;
+            min-height: 52px;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            box-shadow: 0 16px 28px rgba(238, 77, 45, 0.24);
+            touch-action: manipulation;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            filter: brightness(0.98);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .status-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            font-size: 0.94rem;
+            line-height: 1.6;
+            border: 1px solid transparent;
+        }
+
+        .status-message i {
+            margin-top: 4px;
+        }
+
+        .status-message.error {
+            color: var(--danger);
+            background: var(--danger-bg);
+            border-color: rgba(180, 35, 24, 0.12);
+        }
+
+        .status-message.success {
+            color: var(--success);
+            background: var(--success-bg);
+            border-color: rgba(15, 138, 75, 0.12);
+        }
+
+        .register-link {
+            margin-top: 24px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.94rem;
+        }
+
+        .register-link a {
+            color: var(--brand-primary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .register-link a:hover {
+            color: #c73717;
+            text-decoration: underline;
+        }
+
+        .helper-copy {
+            margin-top: 12px;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            text-align: center;
+        }
+
+        @media (max-width: 960px) {
+            .login-shell {
+                grid-template-columns: 1fr;
+                min-height: auto;
+            }
+
+            .login-hero {
+                padding: 32px 28px 24px;
+                min-height: 280px;
+            }
+
+            .login-panel {
+                padding: 30px 24px 28px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
+            .login-shell {
+                border-radius: 22px;
+            }
+
+            .login-hero {
+                padding: 28px 22px 22px;
+            }
+
+            .login-panel {
+                padding: 26px 20px 24px;
+            }
+
+            h2 {
+                font-size: 1.75rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation: none !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-shell">
+        <section class="login-hero" aria-label="Giới thiệu hệ thống">
+      
+
+            <div class="hero-content">
+                <h2>Upload Video Manager</h2>
+                <p>Nền tảng hỗ trợ Affiliate và Customer.</p>
+
+               
+            </div>
+
+            <div class="hero-footnote">
+                <i class="fas fa-lock" aria-hidden="true"></i>
+                <span>Phiên làm việc được bảo vệ và truy cập bằng tài khoản nội bộ.</span>
+            </div>
+        </section>
+
+        <section class="login-panel" aria-labelledby="login-title">
+            <div class="panel-intro">
+                <span class="eyebrow">Đăng nhập hệ thống</span>
+                <h2 id="login-title">Chào mừng quay lại</h2>
+                <p>Nhập tài khoản để tiếp tục vào khu quản trị và công cụ vận hành.</p>
+            </div>
+
+            <% if (locals.error) { %>
+                <div class="status-message error" aria-live="polite">
+                    <i class="fas fa-circle-exclamation" aria-hidden="true"></i>
+                    <span><%= error %></span>
+                </div>
+            <% } %>
+
+            <% if (locals.success) { %>
+                <div class="status-message success" aria-live="polite">
+                    <i class="fas fa-circle-check" aria-hidden="true"></i>
+                    <span><%= success %></span>
+                </div>
+            <% } %>
+
+            <form action="/login" method="POST">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <div class="input-with-icon">
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            autocomplete="username"
+                            spellcheck="false"
+                            required
+                            placeholder="Nhập tên đăng nhập…">
+                        <i class="fas fa-user" aria-hidden="true"></i>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <div class="input-with-icon">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            autocomplete="current-password"
+                            required
+                            placeholder="Nhập mật khẩu…">
+                        <i class="fas fa-lock" aria-hidden="true"></i>
+                    </div>
+                </div>
+
+                <button type="submit">
+                    <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+                    Đăng nhập
+                </button>
+            </form>
+
+            <p class="helper-copy">Nếu có lỗi đăng nhập, kiểm tra lại tên tài khoản hoặc liên hệ quản trị viên.</p>
+
+            <div class="register-link">
+                <p>Chưa có tài khoản? <a href="/register">Đăng ký ngay</a></p>
+            </div>
+        </section>
+    </div>
+</body>
+</html>

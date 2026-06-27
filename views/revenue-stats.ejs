@@ -1,0 +1,371 @@
+<div class="container-fluid py-4 app-page">
+
+  <!-- Filter Form -->
+  <div class="card mb-0 surface-card">
+    <div class="card-body">
+      <form method="GET" action="/revenue-stats" class="row g-3">
+        <div class="col-xl-2 col-lg-3 col-md-4">
+          <label for="month-picker" class="form-label">Chọn tháng:</label>
+          <input type="month" class="form-control" id="month-picker" name="month-year" value="<%= year %>-<%= month.toString().padStart(2, '0') %>" onchange="updateMonthYear(this.value)">
+          <input type="hidden" name="month" id="month-input" value="<%= month %>">
+          <input type="hidden" name="year" id="year-input" value="<%= year %>">
+        </div>
+
+        <div class="col-xl-2 col-lg-3 col-md-4">
+          <label for="username" class="form-label">Username:</label>
+          <input type="text" class="form-control" id="username" name="username" placeholder="Tìm theo username" value="<%= username %>">
+        </div>
+
+        <div class="col-xl-2 col-lg-3 col-md-4">
+          <label for="summary_date" class="form-label">Ngày tổng hợp:</label>
+          <input type="date" class="form-control" id="summary_date" name="summary_date" value="<%= summaryDateInput %>">
+        </div>
+
+        <% if (showTeamFilter) { %>
+        <div class="col-xl-2 col-lg-3 col-md-4">
+          <label for="team" class="form-label">Team:</label>
+          <select class="form-select" id="team" name="team">
+            <option value="">Tất cả</option>
+            <% teams.forEach(teamName => { %>
+            <option value="<%= teamName %>" <%= team === teamName ? 'selected' : '' %>><%= teamName %></option>
+            <% }); %>
+          </select>
+        </div>
+        <% } %>
+
+        <div class="col-xl-6 col-lg-6 col-md-12 d-flex align-items-end flex-wrap gap-2">
+          <button type="submit" class="btn btn-primary">Lọc</button>
+          <a href="/revenue-stats" class="btn btn-secondary">Reset</a>
+          <button type="button" class="btn btn-outline-success" id="runCollectionByDateBtn">Đồng bộ theo ngày đã chọn</button>
+          <button type="button" class="btn btn-success" id="runCollectionTodayBtn">Đồng bộ ngay</button>
+        </div>
+      </form>
+      <div class="alert d-none mt-3 mb-0" id="runCollectionMessage" role="alert"></div>
+    </div>
+  </div>
+
+  <!-- Debug Info (outside of table) -->
+  <% if (process.env.NODE_ENV === 'development') { %>
+  <div class="card mb-0 surface-card">
+    <div class="card-body">
+      <h5>Debug Info:</h5>
+      <pre>
+Month: <%= month %>
+Year: <%= year %>
+Days in Month: <%= daysInMonth %>
+Account Count: <%= accounts.length %>
+Grand Total: <%= formatMoney(grandTotal) %>
+Total GMV: <%= formatMoney(totalGMV) %>
+Total Clicks: <%= formatNumber(totalClicks) %>
+      </pre>
+    </div>
+  </div>
+  <% } %>
+
+  <!-- Revenue Table -->
+  <div class="card surface-card data-table-card">
+    <div class="card-body">
+      <div class="stat-grid mb-4">
+        <div class="stat-card">
+          <span>Tổng tài khoản</span>
+          <strong><%= formatNumber(accounts.length) %></strong>
+        </div>
+        <div class="stat-card">
+          <span>Tổng hoa hồng</span>
+          <strong><%= formatMoney(grandTotal) %></strong>
+        </div>
+        <div class="stat-card">
+          <span>Tổng GMV</span>
+          <strong><%= formatMoney(totalGMV) %></strong>
+        </div>
+        <div class="stat-card">
+          <span>Tổng click</span>
+          <strong><%= formatNumber(totalClicks) %></strong>
+        </div>
+        <div class="stat-card">
+          <span>Tổng sản phẩm bán</span>
+          <strong><%= formatNumber(totalItemsSold ? totalItemsSold : 0) %></strong>
+        </div>
+        <div class="stat-card">
+          <span>EPC trung bình</span>
+          <strong><%= formatMoney(averageEpc) %></strong>
+        </div>
+        <div class="stat-card">
+          <span>CVR trung bình</span>
+          <strong><%= formatNumber(averageCvr, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>%</strong>
+        </div>
+        <div class="stat-card">
+          <span>Số ngày trong tháng</span>
+          <strong><%= formatNumber(daysInMonth) %></strong>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h6 class="mb-3">Tổng theo ngày đã chọn (<%= selectedDaySummary.dateLabel %>)</h6>
+        <div class="stat-grid">
+          <div class="stat-card">
+            <span>Hoa hồng ngày chọn</span>
+            <strong><%= formatMoney(selectedDaySummary.totalCommission) %></strong>
+          </div>
+          <div class="stat-card">
+            <span>GMV ngày chọn</span>
+            <strong><%= formatMoney(selectedDaySummary.totalGMV) %></strong>
+          </div>
+          <div class="stat-card">
+            <span>Click ngày chọn</span>
+            <strong><%= formatNumber(selectedDaySummary.totalClicks) %></strong>
+          </div>
+          <div class="stat-card">
+            <span>Sản phẩm ngày chọn</span>
+            <strong><%= formatNumber(selectedDaySummary.totalItemsSold) %></strong>
+          </div>
+          <div class="stat-card">
+            <span>Order ngày chọn</span>
+            <strong><%= formatNumber(selectedDaySummary.totalOrders) %></strong>
+          </div>
+          <div class="stat-card">
+            <span>EPC ngày chọn</span>
+            <strong><%= formatMoney(selectedDaySummary.averageEpc) %></strong>
+          </div>
+          <div class="stat-card">
+            <span>CVR ngày chọn</span>
+            <strong><%= formatNumber(selectedDaySummary.averageCvr, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>%</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <style>
+          .revenue-table-container {
+            overflow-x: auto;
+            width: 100%;
+          }
+
+          .revenue-table {
+            width: 100%;
+            table-layout: auto;
+          }
+
+          /* Remove fixed-columns class that might be causing layout issues */
+          .fixed-columns {
+            background-color: inherit;
+          }
+
+          .revenue-cell-positive {
+            --bs-table-bg: #d1e7dd;
+            --bs-table-accent-bg: #d1e7dd;
+            background-color: #d1e7dd !important;
+          }
+
+          .revenue-cell-positive-strong {
+            --bs-table-bg: #a3cfbb;
+            --bs-table-accent-bg: #a3cfbb;
+            background-color: #a3cfbb !important;
+          }
+        </style>
+        <div class="revenue-table-container">
+          <table class="table table-bordered table-hover revenue-table">
+            <thead class="table-light">
+              <tr>
+                <th class="text-center" style="width: 50px;">STT</th>
+                <th style="min-width: 150px;">Tài khoản</th>
+                <% if (showTeamFilter) { %>
+                <th style="min-width: 120px;">Team</th>
+                <th style="min-width: 120px;">MCN</th>
+                <% } %>
+                <% for(let i = 1; i <= daysInMonth; i++) { %>
+                <th class="text-center" style="min-width: 80px;"><%= i %></th>
+                <% } %>
+                <th class="text-center" style="min-width: 100px;">Tổng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (accounts && accounts.length > 0) { %>
+              <% accounts.forEach((account, index) => { %>
+              <tr>
+                <td class="text-center fixed-columns"><%= index + 1 %></td>
+                <td class="fixed-columns"><%= account.username || 'N/A' %></td>
+                <% if (showTeamFilter) { %>
+                <td class="fixed-columns"><%= account.team || 'N/A' %></td>
+                <td class="fixed-columns">
+                  <!-- Display Is MCN status -->
+                  <% if(account.isMcn) { %>
+                  <span class="badge bg-info">MCN</span>
+                  <% } else { %>
+                  <span class="badge bg-secondary">No</span>
+                  <% } %>
+                </td>
+                <% } %>
+                <% for(let i = 0; i < daysInMonth; i++) { %>
+                <td class="text-end <%= (account.dailyCommissions && account.dailyCommissions[i] > 0) ? 'text-success revenue-cell-positive' : '' %>">
+                  <div><%= formatMoney((account.dailyCommissions) ? account.dailyCommissions[i] : 0) %></div>
+                  <small class="text-muted">
+                    <%= (account.dailyItemsSold && account.dailyItemsSold[i]) ? formatNumber(account.dailyItemsSold[i]) + ' sp' : '0 sp' %> |
+                    <%= (account.dailyClicks && account.dailyClicks[i]) ? formatNumber(account.dailyClicks[i]) + ' click' : '0 click' %>
+                  </small>
+                  <small class="text-muted d-block">
+                    GMV: <%= formatMoney((account.dailyGMV) ? account.dailyGMV[i] : 0) %>
+                  </small>
+                </td>
+                <% } %>
+                <td class="text-end fw-bold <%= (account.totalCommission || 0) > 0 ? 'text-success revenue-cell-positive' : '' %>">
+                  <div><%= formatMoney(account.totalCommission || 0) %></div>
+                  <small class="text-muted">
+                    <%= account.totalItemsSold ? formatNumber(account.totalItemsSold) + ' sp' : '0 sp' %> |
+                    <%= account.totalClicks ? formatNumber(account.totalClicks) + ' click' : '0 click' %>
+                  </small>
+                  <small class="text-muted d-block">
+                    GMV: <%= formatMoney(account.totalGMV || 0) %>
+                  </small>
+                </td>
+              </tr>
+              <% }); %>
+              <% } else { %>
+              <tr>
+                <td colspan="<%= daysInMonth + (showTeamFilter ? 4 : 3) %>">
+                  <div class="empty-state">
+                    <i class="fas fa-chart-area" aria-hidden="true"></i>
+                    <p class="mb-0">Không có dữ liệu doanh thu cho bộ lọc hiện tại.</p>
+                  </div>
+                </td>
+              </tr>
+              <% } %>
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="<%= showTeamFilter ? 4 : 2 %>" class="fw-bold fixed-columns">Tổng theo ngày</td>
+                <% for(let i = 0; i < daysInMonth; i++) { %>
+                <td class="text-end fw-bold <%= (dailyTotals && dailyTotals[i] > 0) ? 'text-success revenue-cell-positive-strong' : '' %>">
+                  <div><%= formatMoney(dailyTotals[i]) %></div>
+                  <small class="text-muted">
+                    <%= dailyItemsSoldTotals && dailyItemsSoldTotals[i] ? formatNumber(dailyItemsSoldTotals[i]) + ' sp' : '0 sp' %> |
+                    <%= dailyClickTotals && dailyClickTotals[i] ? formatNumber(dailyClickTotals[i]) + ' click' : '0 click' %>
+                  </small>
+                  <small class="text-muted d-block">
+                    GMV: <%= formatMoney(dailyGmvTotals ? dailyGmvTotals[i] : 0) %>
+                  </small>
+                </td>
+                <% } %>
+                <td class="text-end fw-bold <%= grandTotal > 0 ? 'text-success revenue-cell-positive-strong' : '' %>">
+                  <div><%= formatMoney(grandTotal) %></div>
+                  <small class="text-muted">
+                    <%= totalItemsSold ? formatNumber(totalItemsSold) + ' sp' : '0 sp' %> |
+                    <%= totalClicks ? formatNumber(totalClicks) + ' click' : '0 click' %>
+                  </small>
+                  <small class="text-muted d-block">
+                    GMV: <%= formatMoney(totalGMV) %>
+                  </small>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  async function runCommissionCollection(url, options, fallbackMessage) {
+    const response = await fetch(url, options || {});
+    let payload = null;
+
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+
+    if (!response.ok || (payload && payload.success === false)) {
+      throw new Error(payload?.message || fallbackMessage || `HTTP ${response.status}`);
+    }
+
+    return payload || { success: true, message: fallbackMessage || 'Thao tác thành công.' };
+  }
+
+  function setRunCollectionMessage(message, type) {
+    const messageEl = document.getElementById('runCollectionMessage');
+    if (!messageEl) return;
+    if (!message) {
+      messageEl.className = 'alert d-none mt-3 mb-0';
+      messageEl.textContent = '';
+      return;
+    }
+    messageEl.className = `alert alert-${type || 'info'} mt-3 mb-0`;
+    messageEl.textContent = message;
+  }
+
+  function setButtonsLoading(buttons, loading) {
+    buttons.forEach((button) => {
+      if (button) {
+        button.disabled = loading;
+      }
+    });
+  }
+
+  function updateMonthYear(value) {
+    if (value) {
+      const [year, month] = value.split('-');
+      document.getElementById('month-input').value = parseInt(month);
+      document.getElementById('year-input').value = year;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const summaryDateInput = document.getElementById('summary_date');
+    const runCollectionByDateBtn = document.getElementById('runCollectionByDateBtn');
+    const runCollectionTodayBtn = document.getElementById('runCollectionTodayBtn');
+    const actionButtons = [runCollectionByDateBtn, runCollectionTodayBtn];
+
+    if (runCollectionByDateBtn) {
+      runCollectionByDateBtn.addEventListener('click', async function () {
+        const selectedDate = summaryDateInput ? summaryDateInput.value : '';
+        if (!selectedDate) {
+          setRunCollectionMessage('Vui lòng chọn ngày tổng hợp trước khi đồng bộ theo ngày.', 'warning');
+          return;
+        }
+
+        setButtonsLoading(actionButtons, true);
+        setRunCollectionMessage(`Đang đồng bộ dữ liệu cho ngày ${selectedDate}...`, 'info');
+
+        try {
+          const payload = await runCommissionCollection('/api/commission/run-collection-by-date', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ date: selectedDate })
+          }, 'Đồng bộ dữ liệu theo ngày đã chọn thành công.');
+
+          setRunCollectionMessage(payload.message || `Đã đồng bộ dữ liệu cho ngày ${selectedDate}.`, 'success');
+          window.setTimeout(function () {
+            window.location.reload();
+          }, 1200);
+        } catch (error) {
+          setRunCollectionMessage(error.message || 'Đồng bộ theo ngày đã chọn thất bại.', 'danger');
+        } finally {
+          setButtonsLoading(actionButtons, false);
+        }
+      });
+    }
+
+    if (runCollectionTodayBtn) {
+      runCollectionTodayBtn.addEventListener('click', async function () {
+        setButtonsLoading(actionButtons, true);
+        setRunCollectionMessage('Đang khởi động đồng bộ ngay cho ngày hôm nay...', 'info');
+
+        try {
+          const payload = await runCommissionCollection('/api/commission/run-collection', {
+            method: 'GET'
+          }, 'Đã khởi động đồng bộ ngay.');
+
+          setRunCollectionMessage(payload.message || 'Đã khởi động đồng bộ ngay.', 'success');
+        } catch (error) {
+          setRunCollectionMessage(error.message || 'Đồng bộ ngay thất bại.', 'danger');
+        } finally {
+          setButtonsLoading(actionButtons, false);
+        }
+      });
+    }
+  });
+</script>

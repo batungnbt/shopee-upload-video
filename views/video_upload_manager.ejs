@@ -1,0 +1,921 @@
+<div class="container-fluid px-0">
+  <div class="alert alert-danger d-none" id="localServiceError" role="alert">
+    Service local không hoạt động, yêu cầu bật service hoặc báo cáo admin hỗ trợ.
+  </div>
+  <div class="alert alert-warning d-none" id="websocketServiceError" role="alert">
+    WebSocket local đang mất kết nối hoặc không thể kết nối. Tính năng realtime có thể bị gián đoạn.
+  </div>
+
+  <ul class="nav nav-pills video-tabs mb-3" id="videoManagerTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="campaigns-tab" data-bs-toggle="tab" data-bs-target="#campaigns-tab-pane"
+        type="button" role="tab" aria-controls="campaigns-tab-pane" aria-selected="true">
+        <i class="fas fa-film me-2"></i>Quản lý chiến dịch
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link " id="accounts-tab" data-bs-toggle="tab" data-bs-target="#accounts-tab-pane" type="button"
+        role="tab" aria-controls="accounts-tab-pane" aria-selected="true">
+        <i class="fas fa-film me-2"></i>Quản lý tài khoản
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="videos-tab" data-bs-toggle="tab" data-bs-target="#videos-tab-pane" type="button"
+        role="tab" aria-controls="videos-tab-pane" aria-selected="true">
+        <i class="fas fa-film me-2"></i>Quản lý video
+      </button>
+    </li>
+
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-tab-pane" type="button"
+        role="tab" aria-controls="settings-tab-pane" aria-selected="false">
+        <i class="fas fa-sliders me-2"></i>Cài đặt Upload
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs-tab-pane" type="button"
+        role="tab" aria-controls="logs-tab-pane" aria-selected="false">
+        <i class="fas fa-list-check me-2"></i>Nhật ký Upload
+      </button>
+    </li>
+
+  </ul>
+  <div class="tab-content video-tab-content" id="videoManagerTabsContent">
+    <div class="tab-pane fade show active" id="campaigns-tab-pane" role="tabpanel" aria-labelledby="campaigns-tab"
+      tabindex="0">
+      <div class="row g-2 mb-2" style="height: 460px;">
+        <div class="col-lg-8">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Quản lý chiến dịch</strong>
+              <div class="campaign-header-actions">
+                <button class="btn btn-sm btn-primary" id="campaignCreateBtn">
+                  <i class="fas fa-plus me-1"></i>Tạo chiến dịch
+                </button>
+                <button class="btn btn-sm btn-outline-danger" id="campaignDeleteAllBtn">
+                  <i class="fas fa-trash me-1"></i>Xóa tất cả chiến dịch
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="campaignReloadBtn">
+                  <i class="fas fa-rotate-right me-1"></i>Tải lại
+                </button>
+              </div>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive" style="height: 400px; overflow: auto;">
+                <table class="table table-striped table-hover mb-0" id="campaignJobsTable">
+                  <thead class="table-light">
+                    <tr>
+                      <th>ID</th>
+                      <th>Tên chiến dịch</th>
+                      <th>Trạng thái</th>
+                      <th>Số video</th>
+                      <th>Kết quả</th>
+                      <th>Tạo lúc</th>
+                      <th>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="campaignJobsTableBody">
+                    <tr>
+                      <td colspan="7" class="text-center text-muted py-4">Đang tải danh sách chiến dịch...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Hàng đợi realtime</strong>
+              <span id="campaignSocketStatus" class="badge bg-secondary">disconnected</span>
+            </div>
+            <div class="card-body">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <div class="border rounded p-2 bg-light">
+                    <div class="small text-muted">Bộ xử lý</div>
+                    <div id="campaignManagerProcessing" class="fw-semibold">Idle</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="border rounded p-2 bg-light">
+                    <div class="small text-muted">Job hiện tại</div>
+                    <div id="campaignCurrentJob" class="fw-semibold">-</div>
+                  </div>
+                </div>
+              </div>
+              <div class="mb-2">
+                <div class="small text-muted mb-1">Hàng đợi (job chờ xử lý)</div>
+                <div id="campaignQueueList" class="d-flex flex-wrap gap-1">
+                  <span class="badge bg-light text-dark border">empty</span>
+                </div>
+              </div>
+              <div class="border rounded p-2 bg-light mb-2">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <div class="small text-muted">Tiến độ</div>
+                </div>
+                <div class="progress mb-2 campaign-progress-track">
+                  <div id="campaignProgressBar" class="progress-bar campaign-progress-fill" role="progressbar"
+                    style="width: 0%;" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">0%</div>
+                </div>
+                <div class="campaign-progress-metrics">
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-primary"><i class="fas fa-hashtag"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Mã Job</div>
+                      <div class="campaign-metric-value" id="campaignProgressJobId">-</div>
+                    </div>
+                  </div>
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-dark"><i class="fas fa-layer-group"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Tổng</div>
+                      <div class="campaign-metric-value" id="campaignProgressTotal">0</div>
+                    </div>
+                  </div>
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-success"><i class="fas fa-circle-check"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Thành công</div>
+                      <div class="campaign-metric-value" id="campaignProgressSuccess">0</div>
+                    </div>
+                  </div>
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-danger"><i class="fas fa-circle-xmark"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Lỗi</div>
+                      <div class="campaign-metric-value" id="campaignProgressFailed">0</div>
+                    </div>
+                  </div>
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-warning"><i class="fas fa-hourglass-half"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Chờ xử lý</div>
+                      <div class="campaign-metric-value" id="campaignProgressPending">0</div>
+                    </div>
+                  </div>
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-info"><i class="fas fa-gears"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Đã xử lý</div>
+                      <div class="campaign-metric-value" id="campaignProgressProcessed">0</div>
+                    </div>
+                  </div>
+                  <div class="campaign-metric-card">
+                    <div class="campaign-metric-icon text-secondary"><i class="fas fa-cloud-arrow-up"></i></div>
+                    <div class="campaign-metric-content">
+                      <div class="campaign-metric-label">Đã đăng</div>
+                      <div class="campaign-metric-value" id="campaignProgressUploadedVideos">0</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row g-2">
+        <div class="col-lg-6">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Nhật ký sự kiện chiến dịch</strong>
+              <button class="btn btn-sm btn-outline-secondary" id="campaignClearLogBtn">
+                <i class="fas fa-eraser me-1"></i>Xóa log
+              </button>
+            </div>
+            <div class="card-body p-2"
+              style="height: 460px;background: #0f1115; font-weight: 600; border-width: 2px; border-style: dashed; border-color: rgb(239, 68, 68);">
+              <div id="campaignRealtimeLogPanel"
+                style="height: 440px; max-height: 920px; overflow-y: auto; background: #0f1115; color: #d6d6d6; font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: 700;">
+                Chưa có log campaign.
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <strong>Log upload của accounts</strong>
+              <span id="realtimeSocketStatus" class="badge bg-secondary">disconnected</span>
+            </div>
+            <div class="card-body p-0"
+              style="height: 460px; background: #0f1115; font-weight: 600; border-width: 2px; border-style: dashed; border-color: rgb(239, 68, 68);">
+              <div id="realtimeLogPanel"
+                style="height: 440px; max-height: 920px; overflow-y: auto; background: #0f1115; color: #d6d6d6; font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: 700;"
+                class="p-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade " id="accounts-tab-pane" role="tabpanel" aria-labelledby="accounts-tab" tabindex="0">
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Quản lý tài khoản upload</strong>
+        </div>
+        <div class="card-body">
+
+          <div class="row g-2 mb-2">
+            <div class="col-md-4">
+              <div class="input-group input-group-sm">
+                <input id="accountSearchInput" type="text" class="form-control" placeholder="Tìm theo username">
+                <button id="accountSearchBtn" class="btn btn-outline-primary" type="button">
+                  <i class="fas fa-search me-1"></i>Tìm
+                </button>
+              </div>
+            </div>
+            <div class="col-md-8 d-flex justify-content-md-end align-items-center">
+              <div class="d-flex flex-wrap gap-2 mb-2">
+                <button class="btn btn-sm btn-outline-secondary" id="reloadAccountsBtn">
+                  <i class="fas fa-rotate-right me-1"></i>Tải lại
+                </button>
+                <button class="btn btn-sm btn-info" id="addAccountByCookieBtn">Thêm tài khoản</button>
+                <button class="btn btn-sm btn-warning" id="updateCookieByInputBtn">Cập nhật Cookie Live</button>
+                <button class="btn btn-sm btn-dark" id="updateProxySelectedBtn" disabled>Cập nhật Proxy</button>
+                <button class="btn btn-sm btn-danger" id="deleteSelectedAccountsBtn" disabled>Xóa mục đã chọn</button>
+                <button class="btn btn-sm btn-success" id="enableUploadSelectedBtn" disabled>Bật Upload API</button>
+                <button class="btn btn-sm btn-secondary" id="disableUploadSelectedBtn" disabled>Tắt Upload
+                  API</button>
+                <button class="btn btn-sm btn-primary" id="setMaxDailyVideosBtn" disabled>Đặt giới hạn
+                  upload/ngày</button>
+              </div>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center"><input type="checkbox" id="selectAllAccounts"></th>
+                  <th>STT</th>
+                  <th>Tên đăng nhập</th>
+                  <th>ID Người dùng</th>
+                  <th>Cookie Live</th>
+                  <th>Proxy</th>
+                  <th>Thời gian cập nhật Cookie</th>
+                  <th>Bật Upload API</th>
+                  <th>Tổng video đã upload</th>
+                  <th>Video upload trong ngày</th>
+                  <th>Giới hạn/ngày</th>
+                  <th>Số lỗi upload</th>
+                  <th>Trạng thái Upload</th>
+                  <th>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody id="accountsTableBody">
+                <tr>
+                  <td colspan="14" class="text-center text-muted py-4">Đang tải dữ liệu...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+
+            <small class="text-primary" id="accountPagingSummary">Mặc định 40 tài khoản / trang</small>
+            <small class="text-black" id="accountPaginationInfo">Trang 1 / 1</small>
+            <div class="btn-group btn-group-sm">
+              <button id="accountPrevPageBtn" class="btn btn-outline-secondary text-black" type="button">Trước</button>
+              <button id="accountNextPageBtn" class="btn btn-outline-secondary text-black" type="button">Sau</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-pane fade  " id="videos-tab-pane" role="tabpanel" aria-labelledby="videos-tab" tabindex="0">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button class="btn btn-sm btn-danger" id="deleteSelectedVideosBtn" disabled>
+          <i class="fas fa-trash me-1"></i>Xóa video đã chọn
+        </button>
+
+        <button class="btn btn-sm btn-warning" id="uploadExcelReupBtn">
+          <i class="fas fa-upload me-1"></i>Tải lên excel Reup
+        </button>
+        <input type="file" id="uploadExcelReupInput" accept=".xlsx,.xls" class="d-none">
+        <button class="btn btn-sm btn-info text-white" id="uploadExcelAiBtn">
+          <i class="fas fa-upload me-1"></i>Tải lên excel AI
+        </button>
+        <input type="file" id="uploadExcelAiInput" accept=".xlsx,.xls" class="d-none">
+        <button class="btn btn-sm btn-primary" id="uploadExcelBtn">
+          <i class="fas fa-upload me-1"></i>Tải lên excel
+        </button>
+        <input type="file" id="uploadExcelInput" accept=".xlsx,.xls" class="d-none">
+        <button class="btn btn-sm btn-success" id="downloadTemplateBtn">
+          <i class="fas fa-file-excel me-1"></i>Tải template
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="refreshVideosBtn">
+          <i class="fas fa-rotate-right me-1"></i>Tải lại
+        </button>
+      </div>
+      <div class="alert d-none" id="uploadExcelMessage" role="alert"></div>
+
+      <div class="card mb-3">
+        <div class="card-body py-2">
+          <div class="row g-2 align-items-center">
+            <div class="col-md-4">
+              <label class="form-label mb-1" for="searchKeyword">Tìm kiếm</label>
+              <input type="text" id="searchKeyword" class="form-control form-control-sm"
+                placeholder="path_video, name_file, id_hash...">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label mb-1" for="statusFilter">Trạng thái thông tin</label>
+              <select id="statusFilter" class="form-select form-select-sm">
+                <option value="all">Tất cả</option>
+                <option value="missing">Chưa đủ thông tin cần update</option>
+                <option value="completed">Đã có đủ thông tin</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label mb-1" for="uploadFilter">Trạng thái upload</label>
+              <select id="uploadFilter" class="form-select form-select-sm">
+                <option value="all">Tất cả</option>
+                <option value="VIDEO_UPLOADED">Đã upload</option>
+                <option value="NOT_UPLOADED">Chưa upload</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <div class="form-check mt-2">
+                <input class="form-check-input" type="checkbox" id="useDbVideosApi">
+                <label class="form-check-label" for="useDbVideosApi">Lấy full video từ CSDL (/videos)</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-3">
+          <div class="card border-0 bg-light">
+            <div class="card-body py-2">
+              <div class="small text-muted">Tổng video</div>
+              <div class="h5 mb-0" id="totalCount">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 bg-light">
+            <div class="card-body py-2">
+              <div class="small text-muted">Chưa đủ thông tin</div>
+              <div class="h5 mb-0 text-warning" id="missingCount">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 bg-light">
+            <div class="card-body py-2">
+              <div class="small text-muted">Đủ thông tin</div>
+              <div class="h5 mb-0 text-success" id="completedCount">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card border-0 bg-light">
+            <div class="card-body py-2">
+              <div class="small text-muted">Đã upload</div>
+              <div class="h5 mb-0 text-primary" id="uploadedCount">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-striped table-hover align-middle mb-0" id="videosTable">
+              <thead class="table-light">
+                <tr>
+                  <th class="text-center">
+                    <input type="checkbox" id="selectAllVideos">
+                  </th>
+                  <th>#</th>
+                  <th>Trạng thái thông tin</th>
+                  <th>Đường dẫn Video</th>
+                  <th>ID</th>
+                  <th>File Name</th>
+                  <th>Links</th>
+                  <th>Account</th>
+                  <th>Trạng thái</th>
+                  <th>Caption</th>
+                  <th>Hashtag</th>
+                  <th>Thiếu field</th>
+                </tr>
+              </thead>
+              <tbody id="videosTableBody">
+                <tr>
+                  <td colspan="12" class="text-center py-4 text-muted">Đang tải dữ liệu...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="settings-tab-pane" role="tabpanel" aria-labelledby="settings-tab" tabindex="0">
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Cài đặt service upload local</strong>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary" id="reloadLocalSettingsBtn">
+              <i class="fas fa-rotate-right me-1"></i>Tải cài đặt
+            </button>
+            <button class="btn btn-sm btn-primary" id="saveLocalSettingsBtn">
+              <i class="fas fa-floppy-disk me-1"></i>Lưu cài đặt
+            </button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="alert d-none mb-2" id="localSettingsMessage" role="alert"></div>
+          <div id="localSettingsForm" class="row g-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="logs-tab-pane" role="tabpanel" aria-labelledby="logs-tab" tabindex="0">
+      <div class="w-100">
+        <div class="row g-2">
+          <div class="col-lg-4">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Log hoạt động dịch vụ upload video</strong>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="clearActivityLogsBtn">
+                  <i class="fas fa-eraser me-1"></i>Xóa log
+                </button>
+              </div>
+              <div class="card-body p-2"
+                style="height: 920px; overflow-y: auto; background: #0f1115; font-weight: 600; border-width: 2px; border-style: dashed; border-color: rgb(239, 68, 68);">
+                <div id="activityLogContainer" class="small text-muted"
+                  style="max-height: 920px; background: #0f1115; color: #d6d6d6; font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: 700;">
+                  Chưa có log.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-8">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Log upload của accounts</strong>
+                <span id="realtimeSocketStatus" class="badge bg-secondary">disconnected</span>
+              </div>
+              <div class="card-body p-0"
+                style="background: #0f1115; font-weight: 600; border-width: 2px; border-style: dashed; border-color: rgb(239, 68, 68);">
+                <div id="realtimeLogPanel"
+                  style="max-height: 920px; overflow-y: auto; background: #0f1115; color: #d6d6d6; font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: 700;"
+                  class="p-2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="accountLogsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable campaign-create-modal-dialog">
+    <div class="modal-content" style="min-height: 80vh; padding: 20px;">
+      <div class="modal-header">
+        <h5 class="modal-title">Nhật ký - <span id="accountLogsModalTitle">-</span></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="d-flex justify-content-end p-2 border-bottom">
+          <button class="btn btn-sm btn-outline-secondary" id="refreshAccountLogsBtn">Làm mới</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-striped table-hover mb-0" id="apiLogsTable">
+            <thead class="table-light">
+              <tr>
+                <th>Thời gian</th>
+                <th>Tên đăng nhập</th>
+                <th>IP</th>
+                <th>Status</th>
+                <th style="width: 45%;">Nội dung</th>
+                <th>Mã Job</th>
+                <th>Liên kết bài đăng</th>
+                <th>Nguồn</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="8" class="text-center text-muted py-3">Chọn account để xem log</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="addAccountModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Thêm tài khoản</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="addAccountFeedback" class="alert d-none mb-3" role="alert"></div>
+        <div class="mb-3">
+          <label for="addAccountUsernameInput" class="form-label">Tên đăng nhập</label>
+          <input id="addAccountUsernameInput" type="text" class="form-control" placeholder="Nhập tên đăng nhập">
+        </div>
+        <div class="mb-0">
+          <label for="addAccountCookieInput" class="form-label">Cookie Live</label>
+          <textarea id="addAccountCookieInput" class="form-control" rows="5"
+            placeholder="Dán cookie vào đây..."></textarea>
+          <small class="text-muted">Hệ thống sẽ tự parse `SPC_U` để lấy `user_id`.</small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" id="submitAddAccountBtn">Thêm tài khoản</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="bulkProxyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Cập nhật Proxy hàng loạt</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="bulkProxyFeedback" class="alert d-none mb-3" role="alert"></div>
+        <div class="mb-2 text-muted small">
+          Đã chọn <strong id="bulkProxySelectedCount">0</strong> account.
+          Nhập 1 proxy để áp dụng cho tất cả, hoặc nhập nhiều dòng bằng đúng số account đã chọn.
+        </div>
+        <div class="mb-0">
+          <label for="bulkProxyInput" class="form-label">Danh sách proxy</label>
+          <textarea id="bulkProxyInput" class="form-control" rows="8"
+            placeholder="type://user:pass@ip:port&#10;type://ip:port&#10;type://ip:port:user:pass&#10;ip:port:user:pass"></textarea>
+          <small class="text-muted">
+            Hỗ trợ: `type://user:pass@ip:port`, `type://ip:port`, `type://ip:port:user:pass`, `ip:port:user:pass`
+          </small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+        <button type="button" class="btn btn-primary" id="submitBulkProxyBtn">Cập nhật Proxy</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade campaign-fullscreen-modal" id="campaignCreateModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-fullscreen modal-dialog-scrollable campaign-create-fullscreen-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Tạo chiến dịch mới</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-2 mb-3">
+          <div class="col-md-4">
+            <label class="form-label mb-1" for="campaignNameInput">Tên chiến dịch</label>
+            <input type="text" class="form-control form-control-sm" id="campaignNameInput"
+              placeholder="Tên chiến dịch ...">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label mb-1" for="campaignDelayMinInput">Độ trễ tối thiểu</label>
+            <input type="number" class="form-control form-control-sm" id="campaignDelayMinInput" min="0" step="1"
+              value="10">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label mb-1" for="campaignDelayMaxInput">Độ trễ tối đa</label>
+            <input type="number" class="form-control form-control-sm" id="campaignDelayMaxInput" min="0" step="1"
+              value="30">
+          </div>
+          <div class="col-md-4 d-flex align-items-end">
+            <div class="d-flex flex-wrap gap-2">
+              <button class="btn btn-sm btn-warning" id="campaignModalUploadExcelReupBtn" type="button">
+                <i class="fas fa-upload me-1"></i>Tải lên excel Reup
+              </button>
+              <input type="file" id="campaignModalUploadExcelReupInput" accept=".xlsx,.xls" class="d-none">
+              <button class="btn btn-sm btn-info text-white" id="campaignModalUploadExcelAiBtn" type="button">
+                <i class="fas fa-upload me-1"></i>Tải lên excel AI
+              </button>
+              <input type="file" id="campaignModalUploadExcelAiInput" accept=".xlsx,.xls" class="d-none">
+              <button class="btn btn-sm btn-primary" id="campaignModalUploadExcelBtn" type="button">
+                <i class="fas fa-upload me-1"></i>Tải lên excel
+              </button>
+              <input type="file" id="campaignModalUploadExcelInput" accept=".xlsx,.xls" class="d-none">
+              <button class="btn btn-sm btn-success" id="campaignModalDownloadTemplateBtn" type="button">
+                <i class="fas fa-file-excel me-1"></i>Tải template
+              </button>
+              <button class="btn btn-sm btn-outline-secondary" id="campaignModalRefreshVideosBtn" type="button">
+                <i class="fas fa-rotate-right me-1"></i>Tải lại
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert d-none" id="campaignModalMessage" role="alert"></div>
+
+        <div class="card mb-3">
+          <div class="card-body py-2">
+
+            <div class="row g-2 align-items-center">
+              <div class="col-md-4">
+                <label class="form-label mb-1" for="campaignModalSearchKeyword">Tìm kiếm</label>
+                <input type="text" id="campaignModalSearchKeyword" class="form-control form-control-sm"
+                  placeholder="path_video, name_file, id_hash...">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label mb-1" for="campaignModalStatusFilter">Trạng thái thông tin</label>
+                <select id="campaignModalStatusFilter" class="form-select form-select-sm">
+                  <option value="all">Tất cả</option>
+                  <option value="missing">Chưa đủ thông tin cần update</option>
+                  <option value="completed">Đã có đủ thông tin</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label mb-1" for="campaignModalUploadFilter">Trạng thái upload</label>
+                <select id="campaignModalUploadFilter" class="form-select form-select-sm">
+                  <option value="all">Tất cả</option>
+                  <option value="VIDEO_UPLOADED">Đã upload</option>
+                  <option value="NOT_UPLOADED">Chưa upload</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <div class="form-check mt-4">
+                  <input class="form-check-input" type="checkbox" id="campaignModalOnlyFolder">
+                  <label class="form-check-label" for="campaignModalOnlyFolder">Chỉ lấy theo thư mục cài đặt</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="alert alert-info py-2 mb-3" role="alert">
+          <i class="fas fa-circle-info me-1"></i>
+          Sau khi <strong>Tạo và chạy chiến dịch</strong>, chiến dịch sẽ vào hàng đợi và tự xử lý tuần tự.
+          Chỉ khi chiến dịch bị lỗi thì mới cần dùng nút <strong>Bắt đầu</strong> hoặc <strong>Dừng</strong> ở chiến
+          dịch đó.
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-striped table-hover align-middle mb-0" id="campaignModalVideosTable">
+            <thead class="table-light">
+              <tr>
+                <th class="text-center"><input type="checkbox" id="campaignModalSelectAllVideos"></th>
+                <th>#</th>
+                <th>Trạng thái thông tin</th>
+                <th>Đường dẫn Video</th>
+                <th>ID</th>
+                <th>Tên file</th>
+                <th>Liên kết</th>
+                <th>Tài khoản</th>
+                <th>Trạng thái</th>
+                <th>Mô tả</th>
+                <th>Hashtag</th>
+                <th>Thiếu field</th>
+              </tr>
+            </thead>
+            <tbody id="campaignModalVideosTableBody">
+              <tr>
+                <td colspan="12" class="text-center py-4 text-muted">Đang tải dữ liệu...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between">
+        <div class="small text-muted">Đã chọn: <strong id="campaignModalSelectedCount">0</strong> videos</div>
+        <div>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+          <button type="button" class="btn btn-primary" id="campaignModalCreateAndStartBtn">
+            <i class="fas fa-play me-1"></i>Tạo và chạy chiến dịch
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .container-fluid.px-0 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: none !important;
+  }
+
+  #videoManagerTabs {
+    margin: auto !important;
+    width: 100% !important;
+  }
+
+  #videoManagerTabsContent {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  #videoManagerTabsContent > .tab-pane {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  #videoManagerTabsContent > .tab-pane > .row,
+  #videoManagerTabsContent > .tab-pane > .w-100,
+  #videoManagerTabsContent > .tab-pane > .container,
+  #videoManagerTabsContent > .tab-pane > .container-fluid {
+    width: 100% !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  #localServiceError,
+  #websocketServiceError {
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  #videos-tab-pane {
+    font-weight: 600;
+  }
+
+  #videos-tab-pane>.row.g-2.mb-3 {
+    font-weight: 700;
+  }
+
+  #settings-tab-pane>.card>.card-body {
+    font-weight: 700;
+  }
+
+  #localSettingsForm {
+    font-weight: 700;
+  }
+
+  #serverAccessTokenInput {
+    font-weight: 600;
+  }
+
+  #settingPathFolderInput {
+    font-weight: 600;
+  }
+
+  #videosTable th:nth-child(4),
+  #videosTable th:nth-child(5),
+  #videosTable td:nth-child(4),
+  #videosTable td:nth-child(5) {
+    display: none;
+  }
+
+  #campaignModalVideosTable th:nth-child(4),
+  #campaignModalVideosTable th:nth-child(5),
+  #campaignModalVideosTable td:nth-child(4),
+  #campaignModalVideosTable td:nth-child(5) {
+    display: none;
+  }
+
+  #campaignModalVideosTable.path-only th:nth-child(n + 5),
+  #campaignModalVideosTable.path-only td:nth-child(n + 5) {
+    display: none;
+  }
+
+  .campaign-create-modal-dialog {
+    max-width: min(96vw, 1700px);
+  }
+
+  .campaign-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .campaign-header-actions .btn {
+    white-space: normal;
+  }
+
+  #campaigns-tab-pane .card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    overflow-x: hidden;
+  }
+
+  #campaigns-tab-pane .card-header>strong {
+    min-width: 0;
+  }
+
+  @media (max-width: 768px) {
+    #campaigns-tab-pane .card-header {
+      flex-direction: column;
+      align-items: flex-start !important;
+      gap: 8px;
+    }
+
+    .campaign-header-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+
+  .campaign-fullscreen-modal .modal-dialog {
+    margin: 0;
+    transform: translateY(-100%);
+    transition: transform 0.28s ease-out;
+  }
+
+  .campaign-fullscreen-modal.show .modal-dialog {
+    transform: translateY(0);
+  }
+
+  .campaign-fullscreen-modal .modal-content {
+    border: 0;
+    border-radius: 0;
+    min-height: 100vh;
+  }
+
+  .campaign-progress-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .campaign-metric-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e6eaf0;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+
+  .campaign-metric-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    background: #f3f6fb;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+
+  .campaign-metric-label {
+    font-size: 11px;
+    color: #6b7280;
+    line-height: 1.1;
+  }
+
+  .campaign-metric-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    line-height: 1.2;
+  }
+
+  .campaign-progress-track {
+    height: 16px;
+    border-radius: 0;
+    background-color: #edf0f3;
+    overflow: hidden;
+  }
+
+  .campaign-progress-fill {
+    border-radius: 0;
+    background-color: #0d6efd !important;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    white-space: nowrap;
+    transition: width 0.25s ease;
+  }
+
+  #campaignJobsTable {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  #campaignJobsTable thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8f9fa;
+    box-shadow: inset 0 -1px 0 #dee2e6;
+  }
+</style>
+
+<%- contentFor('extraScripts') %>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="/js/video_upload_manager.js"></script>
+  <script src="/js/campaign_jobs.js"></script>

@@ -1,0 +1,731 @@
+<style>
+  .dashboard-shell {
+    display: grid;
+    gap: 18px;
+  }
+
+  .dashboard-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    padding: 28px;
+    color: #ffffff;
+    background:
+      radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 28%),
+      linear-gradient(135deg, #ee4d2d 0%, #ff8b62 100%);
+    box-shadow: 0 24px 42px rgba(238, 77, 45, 0.18);
+  }
+
+  .dashboard-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -60px -90px auto;
+    width: 240px;
+    height: 240px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.09);
+    pointer-events: none;
+  }
+
+  .dashboard-hero > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .dashboard-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-greeting {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .dashboard-greeting-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    padding: 10px 16px;
+    border-radius: 18px;
+    background: rgba(8, 15, 32, 0.16);
+    backdrop-filter: blur(10px);
+    font-size: clamp(1.15rem, 1.8vw, 1.6rem);
+    line-height: 1.2;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+    text-wrap: balance;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  }
+
+  .dashboard-title i {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.9rem;
+  }
+
+  .dashboard-title strong {
+    color: #fff7ed;
+    font-weight: 800;
+  }
+
+  .dashboard-subtitle {
+    max-width: 46rem;
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.86);
+  }
+
+  .dashboard-hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .dashboard-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.94);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+
+  .dashboard-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: 1.2fr 0.8fr;
+  }
+
+  .dashboard-grid.analytics-grid-layout {
+    grid-template-columns: 1.3fr 0.7fr;
+  }
+
+  .dashboard-panel {
+    border-radius: 24px;
+    padding: 22px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(255, 143, 108, 0.14);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    backdrop-filter: blur(16px);
+  }
+
+  .dashboard-panel h2,
+  .dashboard-panel h3 {
+    margin: 0 0 8px;
+    color: #1f2937;
+    text-wrap: balance;
+  }
+
+  .dashboard-panel p {
+    margin: 0;
+    color: #6b7280;
+    line-height: 1.7;
+  }
+
+  .panel-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }
+
+  .panel-heading p {
+    max-width: 40rem;
+  }
+
+  .panel-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(238, 77, 45, 0.08);
+    color: #c2410c;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .analytics-card {
+    position: relative;
+    overflow: hidden;
+    padding: 18px;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8f4 100%);
+    border: 1px solid rgba(255, 130, 90, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+
+  .analytics-card::after {
+    content: "";
+    position: absolute;
+    inset: auto -30px -36px auto;
+    width: 110px;
+    height: 110px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(238, 77, 45, 0.12) 0%, rgba(238, 77, 45, 0) 72%);
+    pointer-events: none;
+  }
+
+  .analytics-icon {
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: rgba(238, 77, 45, 0.12);
+    color: #ee4d2d;
+    margin-bottom: 14px;
+  }
+
+  .analytics-label {
+    display: block;
+    color: #6b7280;
+    font-size: 0.84rem;
+    margin-bottom: 8px;
+  }
+
+  .analytics-value {
+    display: block;
+    color: #111827;
+    font-size: clamp(1.4rem, 2.2vw, 2rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    font-weight: 800;
+  }
+
+  .analytics-note {
+    display: block;
+    margin-top: 8px;
+    color: #6b7280;
+    font-size: 0.86rem;
+  }
+
+  .trend-chart-shell {
+    position: relative;
+    padding: 18px 18px 14px;
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(255, 247, 243, 0.94) 100%);
+    border: 1px solid rgba(255, 130, 90, 0.12);
+  }
+
+  .trend-chart-layout {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .trend-y-axis {
+    display: grid;
+    align-content: space-between;
+    min-height: 280px;
+    padding: 6px 0 22px;
+    color: #94a3b8;
+    font-size: 0.76rem;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .trend-y-axis span {
+    display: block;
+    white-space: nowrap;
+  }
+
+  .trend-chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .trend-chart-grid-line {
+    stroke: rgba(148, 163, 184, 0.26);
+    stroke-width: 1;
+    stroke-dasharray: 6 8;
+  }
+
+  .trend-chart-area {
+    fill: url(#commissionTrendFill);
+  }
+
+  .trend-chart-line {
+    fill: none;
+    stroke: #ee4d2d;
+    stroke-width: 3;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .trend-chart-point {
+    fill: #ffffff;
+    stroke: #ee4d2d;
+    stroke-width: 2;
+  }
+
+  .trend-chart-hit-area {
+    fill: transparent;
+    pointer-events: all;
+  }
+
+  .trend-axis {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 10px;
+    color: #9ca3af;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .trend-axis span {
+    flex: 1;
+  }
+
+  .trend-axis span:nth-child(2) {
+    text-align: center;
+  }
+
+  .trend-axis span:last-child {
+    text-align: right;
+  }
+
+  .trend-empty {
+    display: grid;
+    place-items: center;
+    min-height: 280px;
+    border-radius: 20px;
+    color: #9ca3af;
+    background: rgba(248, 250, 252, 0.9);
+    border: 1px dashed rgba(148, 163, 184, 0.34);
+    text-align: center;
+    padding: 20px;
+  }
+
+  .trend-summary {
+    display: grid;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .mini-stat {
+    padding: 16px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf8 100%);
+    border: 1px solid rgba(255, 130, 90, 0.12);
+  }
+
+  .mini-stat-label {
+    color: #6b7280;
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+  }
+
+  .mini-stat-value {
+    color: #111827;
+    font-size: 1.15rem;
+    font-weight: 800;
+    line-height: 1.3;
+  }
+
+  .mini-stat-note {
+    margin-top: 4px;
+    color: #6b7280;
+    font-size: 0.82rem;
+  }
+
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .quick-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 18px;
+    text-decoration: none;
+    color: #1f2937;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7f3 100%);
+    border: 1px solid rgba(255, 130, 90, 0.16);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+
+  .quick-action:hover {
+    transform: translateY(-2px);
+    border-color: rgba(238, 77, 45, 0.24);
+    box-shadow: 0 16px 24px rgba(238, 77, 45, 0.12);
+    color: #111827;
+  }
+
+  .quick-action:focus-visible {
+    outline: 3px solid rgba(238, 77, 45, 0.2);
+    outline-offset: 2px;
+  }
+
+  .quick-action-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(238, 77, 45, 0.1);
+    color: #ee4d2d;
+    flex-shrink: 0;
+  }
+
+  .quick-action strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.96rem;
+  }
+
+  .quick-action span {
+    display: block;
+    color: #6b7280;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .status-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .status-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #ffffff 0%, #fffaf8 100%);
+    border: 1px solid rgba(255, 130, 90, 0.12);
+  }
+
+  .status-label {
+    color: #6b7280;
+    font-size: 0.88rem;
+  }
+
+  .status-value {
+    color: #111827;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    word-break: break-word;
+  }
+
+  .status-value.ok {
+    color: #0f8a4b;
+  }
+
+  .status-value.warn {
+    color: #b96916;
+  }
+
+  .status-value.danger {
+    color: #b42318;
+  }
+
+  @media (max-width: 992px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .analytics-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .dashboard-hero,
+    .dashboard-panel {
+      padding: 20px;
+      border-radius: 22px;
+    }
+
+    .quick-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .analytics-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .panel-heading {
+      flex-direction: column;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .quick-action {
+      transition: none;
+    }
+  }
+</style>
+
+<%
+  const displayName = user?.name || user?.username || 'bạn';
+  const roleText = user?.role === 'super_admin'
+    ? 'Super Admin'
+    : user?.role === 'admin'
+      ? 'Admin'
+      : 'Thành viên';
+  const hasExpire = !!user?.expiredAt;
+  const expireDate = hasExpire ? new Date(user.expiredAt) : null;
+  const diffMs = hasExpire ? (expireDate - new Date()) : 0;
+  const isExpired = hasExpire ? diffMs <= 0 : false;
+  const expireState = !hasExpire ? 'ok' : (isExpired ? 'danger' : (diffMs < 5 * 24 * 60 * 60 * 1000 ? 'warn' : 'ok'));
+  const expireText = !hasExpire
+    ? 'Không giới hạn'
+    : isExpired
+      ? 'Đã hết hạn'
+      : `${Math.max(Math.ceil(diffMs / (1000 * 60 * 60 * 24)), 1)} ngày còn lại`;
+  const commissionSeries = Array.isArray(dashboardStats?.dailyCommissionSeries) ? dashboardStats.dailyCommissionSeries : [];
+  const chartWidth = 860;
+  const chartHeight = 280;
+  const chartPaddingX = 22;
+  const chartPaddingY = 24;
+  const chartBaseY = chartHeight - chartPaddingY;
+  const chartTopY = chartPaddingY;
+  const chartSpan = Math.max(commissionSeries.length - 1, 1);
+  const chartMaxValue = Math.max(Number(dashboardStats?.maxDailyCommission || 0), 1);
+  const hasCommissionTrend = commissionSeries.some(value => Number(value || 0) > 0);
+  const chartMoneyTicks = [1, 0.66, 0.33, 0].map((ratio) => formatMoney(chartMaxValue * ratio));
+  const chartDayTicks = [
+    'Ngày 01',
+    `Ngày ${String(Math.max(Math.ceil((commissionSeries.length || 1) / 2), 1)).padStart(2, '0')}`,
+    `Ngày ${String(commissionSeries.length || 0).padStart(2, '0')}`
+  ];
+  const chartPoints = commissionSeries.map((value, index) => {
+    const x = chartPaddingX + (index / chartSpan) * (chartWidth - chartPaddingX * 2);
+    const normalized = Math.max(0, Number(value || 0)) / chartMaxValue;
+    const y = chartBaseY - normalized * (chartBaseY - chartTopY);
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(' ');
+  const chartAreaPoints = chartPoints
+    ? `${chartPaddingX},${chartBaseY} ${chartPoints} ${chartWidth - chartPaddingX},${chartBaseY}`
+    : '';
+%>
+
+<section class="dashboard-shell">
+  <section class="dashboard-hero">
+    <div class="dashboard-greeting">
+      <h2 class="dashboard-title"><i class="fas fa-user" aria-hidden="true"></i> Chào <strong><%= displayName %></strong></h2>
+    </div>
+  
+    <div class="dashboard-hero-meta">
+      <span class="dashboard-hero-chip">
+        <i class="fas fa-layer-group" aria-hidden="true"></i>
+        Phạm vi: <%= dashboardStats?.scopeLabel || 'Toàn hệ thống' %>
+      </span>
+      <span class="dashboard-hero-chip">
+        <i class="fas fa-calendar-day" aria-hidden="true"></i>
+        Hôm nay: <%= dashboardStats?.todayLabel || '-' %>
+      </span>
+      <span class="dashboard-hero-chip">
+        <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+        Kỳ theo dõi: <%= dashboardStats?.currentMonthLabel || '-' %>
+      </span>
+    </div>
+  </section>
+
+  <section class="dashboard-panel" aria-labelledby="analytics-title">
+    <div class="panel-heading">
+      <div>
+        <span class="panel-eyebrow">
+          <i class="fas fa-chart-line" aria-hidden="true"></i>
+          Dashboard tổng hợp
+        </span>
+        <p>Tổng hợp nhanh số account đang quản lý, doanh thu tháng hiện tại và sản lượng đăng video.</p>
+      </div>
+    </div>
+
+    <div class="analytics-grid">
+      <article class="analytics-card">
+        <span class="analytics-icon"><i class="fas fa-users" aria-hidden="true"></i></span>
+        <span class="analytics-label">Tổng account đang quản lý</span>
+        <strong class="analytics-value"><%= formatNumber(dashboardStats?.managedAccounts || 0) %></strong>
+        <span class="analytics-note">Lọc theo phạm vi account mà bạn được phép xem.</span>
+      </article>
+
+      <article class="analytics-card">
+        <span class="analytics-icon"><i class="fas fa-dollar" aria-hidden="true"></i></span>
+        <span class="analytics-label">Tổng hoa hồng tháng hiện tại</span>
+        <strong class="analytics-value"><%= formatMoney(dashboardStats?.currentMonthCommission || 0) %></strong>
+        <span class="analytics-note"><%= dashboardStats?.currentMonthLabel || 'Tháng hiện tại' %></span>
+      </article>
+
+      <article class="analytics-card">
+        <span class="analytics-icon"><i class="fas fa-photo-film" aria-hidden="true"></i></span>
+        <span class="analytics-label">Tổng video đã đăng</span>
+        <strong class="analytics-value"><%= formatNumber(dashboardStats?.totalVideosUploaded || 0) %></strong>
+        <span class="analytics-note">Cộng dồn từ toàn bộ account trong phạm vi quản lý.</span>
+      </article>
+
+      <article class="analytics-card">
+        <span class="analytics-icon"><i class="fas fa-bolt" aria-hidden="true"></i></span>
+        <span class="analytics-label">Tổng video đăng trong ngày</span>
+        <strong class="analytics-value"><%= formatNumber(dashboardStats?.totalDailyVideosUploaded || 0) %></strong>
+        <span class="analytics-note">Dữ liệu lấy từ trường `dalyVideosUploaded` hiện có.</span>
+      </article>
+    </div>
+  </section>
+
+  <div class="dashboard-grid analytics-grid-layout">
+    <section class="dashboard-panel" aria-labelledby="commission-trend-title">
+      <div class="panel-heading">
+        <div>
+          <span class="panel-eyebrow">
+            <i class="fas fa-wave-square" aria-hidden="true"></i>
+            Tăng trưởng
+          </span>
+          <h2 id="commission-trend-title">Biểu đồ hoa hồng theo ngày</h2>
+        </div>
+      </div>
+
+      <div class="trend-chart-shell">
+        <% if (hasCommissionTrend) { %>
+        <div class="trend-chart-layout">
+          <div class="trend-y-axis" aria-hidden="true">
+            <% chartMoneyTicks.forEach((tickLabel) => { %>
+            <span><%= tickLabel %></span>
+            <% }); %>
+          </div>
+          <div>
+            <svg class="trend-chart-svg" viewBox="0 0 <%= chartWidth %> <%= chartHeight %>" role="img" aria-label="Biểu đồ tăng trưởng hoa hồng theo ngày">
+              <defs>
+                <linearGradient id="commissionTrendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="rgba(238, 77, 45, 0.34)"></stop>
+                  <stop offset="100%" stop-color="rgba(238, 77, 45, 0.02)"></stop>
+                </linearGradient>
+              </defs>
+              <% for (let i = 0; i < 4; i++) { %>
+              <line
+                class="trend-chart-grid-line"
+                x1="<%= chartPaddingX %>"
+                y1="<%= chartTopY + ((chartBaseY - chartTopY) / 3) * i %>"
+                x2="<%= chartWidth - chartPaddingX %>"
+                y2="<%= chartTopY + ((chartBaseY - chartTopY) / 3) * i %>"></line>
+              <% } %>
+              <polygon class="trend-chart-area" points="<%= chartAreaPoints %>"></polygon>
+              <polyline class="trend-chart-line" points="<%= chartPoints %>"></polyline>
+              <% commissionSeries.forEach((value, index) => {
+                const x = chartPaddingX + (index / chartSpan) * (chartWidth - chartPaddingX * 2);
+                const normalized = Math.max(0, Number(value || 0)) / chartMaxValue;
+                const y = chartBaseY - normalized * (chartBaseY - chartTopY);
+                const dayLabel = `${String(index + 1).padStart(2, '0')}/${String(dashboardStats?.currentMonth || 0).padStart(2, '0')}/${dashboardStats?.currentYear || ''}`;
+              %>
+              <g>
+                <title><%= `${dayLabel}: ${formatMoney(value || 0)}` %></title>
+                <circle class="trend-chart-hit-area" cx="<%= x.toFixed(2) %>" cy="<%= y.toFixed(2) %>" r="12"></circle>
+                <circle class="trend-chart-point" cx="<%= x.toFixed(2) %>" cy="<%= y.toFixed(2) %>" r="<%= value > 0 ? 4 : 2.5 %>"></circle>
+              </g>
+              <% }); %>
+            </svg>
+            <div class="trend-axis">
+              <% chartDayTicks.forEach((tickLabel) => { %>
+              <span><%= tickLabel %></span>
+              <% }); %>
+            </div>
+          </div>
+        </div>
+        <% } else { %>
+        <div class="trend-empty">
+          <div>
+            <div class="mb-2"><i class="fas fa-chart-line fa-lg" aria-hidden="true"></i></div>
+            <div>Chưa có dữ liệu hoa hồng trong tháng hiện tại để vẽ biểu đồ.</div>
+          </div>
+        </div>
+        <% } %>
+      </div>
+    </section>
+
+    <aside class="dashboard-panel" aria-labelledby="growth-summary-title">
+      <div class="panel-heading">
+        <div>
+          <span class="panel-eyebrow">
+            <i class="fas fa-lightbulb" aria-hidden="true"></i>
+            Snapshot
+          </span>
+          <h3 id="growth-summary-title">Điểm nhấn tháng này</h3>
+        </div>
+      </div>
+
+      <div class="trend-summary">
+        <div class="mini-stat">
+          <div class="mini-stat-label">Phạm vi quản lý</div>
+          <div class="mini-stat-value"><%= dashboardStats?.scopeLabel || 'Toàn hệ thống' %></div>
+        </div>
+
+        <div class="mini-stat">
+          <div class="mini-stat-label">Ngày hoa hồng cao nhất</div>
+          <div class="mini-stat-value"><%= dashboardStats?.bestDayLabel || 'Chưa có dữ liệu' %></div>
+          <div class="mini-stat-note"><%= formatMoney(dashboardStats?.maxDailyCommission || 0) %></div>
+        </div>
+
+        <div class="mini-stat">
+          <div class="mini-stat-label">Hoa hồng trung bình mỗi ngày</div>
+          <div class="mini-stat-value"><%= formatMoney((dashboardStats?.currentMonthCommission || 0) / Math.max(commissionSeries.length || 1, 1)) %></div>
+        </div>
+
+        <div class="mini-stat">
+          <div class="mini-stat-label">Sản lượng video hôm nay</div>
+          <div class="mini-stat-value"><%= formatNumber(dashboardStats?.totalDailyVideosUploaded || 0) %> video</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+</section>

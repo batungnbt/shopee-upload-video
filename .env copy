@@ -1,0 +1,6 @@
+MONGO_URI=mongodb://localhost:27017/shopee
+JWT_SECRET=83njehr83njr
+SHOPEE_ORIGIN=shopee.cn
+PORT=4001
+WEB_PRO =1
+COUNTRY=vn

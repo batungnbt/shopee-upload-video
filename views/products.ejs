@@ -1,0 +1,723 @@
+<div class="container-fluid app-page">
+  <section class="app-hero">
+    <span class="app-eyebrow">
+      <i class="fas fa-boxes-stacked" aria-hidden="true"></i>
+      Product Workspace
+    </span>
+    <h1 class="h2">Quản lý sản phẩm trong một màn hình sáng, gọn và dễ quét hơn.</h1>
+    <p>Lọc nhanh theo trạng thái, theo dõi tổng quan xử lý video và thao tác import hoặc dọn dữ liệu mà không bị rối bởi quá nhiều lớp giao diện.</p>
+    <div class="hero-actions">
+      <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#importLinksModal">
+        <i class="fas fa-link" aria-hidden="true"></i> Import by Links
+      </button>
+      <a href="/products" class="btn btn-outline-light">Làm mới danh sách</a>
+    </div>
+  </section>
+
+  <!-- Alert Messages -->
+  <% if (message) { %>
+    <div class="alert alert-<%= message.type === 'success' ? 'success' : 'danger' %> alert-dismissible fade show surface-card" role="alert">
+      <%= message.text %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  <% } %>
+
+  <!-- Import Links Modal -->
+  <div class="modal fade" id="importLinksModal" tabindex="-1" aria-labelledby="importLinksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importLinksModalLabel">
+            <i class="fas fa-link" aria-hidden="true"></i> Import Products by Links
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="productLinks" class="form-label">Product Links (one per line)</label>
+              <textarea 
+                class="form-control" 
+                id="productLinks" 
+                name="productLinks" 
+                rows="10" 
+                placeholder="<%= ((process.env.SHOPEE_ORIGIN || 'https://shopee.vn').startsWith('http') ? (process.env.SHOPEE_ORIGIN || 'https://shopee.vn') : `https://${process.env.SHOPEE_ORIGIN || 'shopee.vn'}`) %>/product-name-i.12345.67890&#10;<%= ((process.env.SHOPEE_ORIGIN || 'https://shopee.vn').startsWith('http') ? (process.env.SHOPEE_ORIGIN || 'https://shopee.vn') : `https://${process.env.SHOPEE_ORIGIN || 'shopee.vn'}`) %>/another-product-i.54321.09876"
+                required
+              ></textarea>
+              <small class="form-text text-muted">
+                Enter Shopee product links, one per line. Item IDs will be generated from link hashes.
+              </small>
+            </div>
+            
+            <% if (user && ['admin', 'super_admin'].includes(user.role)) { %>
+              <!-- Admin can choose team -->
+              <div class="mb-3">
+                <label for="importTeam" class="form-label">Assign to Team</label>
+                <select class="form-select" id="importTeam" name="team" required>
+                  <option value="">Select Team</option>
+                  <% if (teams && teams.length > 0) { %>
+                    <% teams.forEach(team => { %>
+                      <option value="<%= team._id %>"><%= team.name %></option>
+                    <% }); %>
+                  <% } %>
+                </select>
+              </div>
+            <% } else if (user && user.team) { %>
+              <!-- Regular user - auto-assign to their team -->
+              <input type="hidden" name="team" id="importTeamDefault" value="<%= user.team._id %>">
+              <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i> 
+                Products will be assigned to your team: <strong><%= user.team.name %></strong>
+              </div>
+            <% } else { %>
+              <!-- User without team -->
+              <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                You don't have a team assigned. Please contact admin.
+              </div>
+            <% } %>
+            
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> 
+              <strong>Note:</strong> Products will be imported with basic information. 
+              Item IDs will be generated using hash of the product links to ensure uniqueness.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="importSubmitBtn" <%= (!user || (!user.team && !['admin', 'super_admin'].includes(user.role))) ? 'disabled' : '' %>>
+              <i class="fas fa-upload"></i> Import Products
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section - Collapsible -->
+  <div class="card mb-0 surface-card">
+    <button type="button" class="card-header w-100 border-0 text-start" data-bs-toggle="collapse" data-bs-target="#filtersCollapse" aria-expanded="false" aria-controls="filtersCollapse">
+      <div class="section-heading w-100">
+        <div>
+          <h5><i class="fas fa-filter" aria-hidden="true"></i> Bộ lọc sản phẩm</h5>
+          <p>Thu hẹp danh sách theo tên, giá, rating, team và trạng thái xử lý video.</p>
+        </div>
+        <i class="fas fa-chevron-down" id="filterIcon" aria-hidden="true"></i>
+      </div>
+    </button>
+    <div class="collapse" id="filtersCollapse">
+      <div class="card-body">
+        <form id="filterForm" method="GET" action="/products" class="filters-grid">
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label for="item_id" class="form-label">Item ID</label>
+              <input type="text" class="form-control" id="item_id" name="item_id" value="<%= query.item_id || '' %>">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="shop_id" class="form-label">Shop ID</label>
+              <input type="text" class="form-control" id="shop_id" name="shop_id" value="<%= query.shop_id || '' %>">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="name" class="form-label">Product Name</label>
+              <input type="text" class="form-control" id="name" name="name" value="<%= query.name || '' %>">
+            </div>
+            <% if (user && ['admin', 'super_admin'].includes(user.role)) { %>
+              <div class="col-md-3 mb-3">
+                <label for="team" class="form-label">Team</label>
+                <select class="form-select" id="team" name="team">
+                  <option value="">All Teams</option>
+                  <% if (teams && teams.length > 0) { %>
+                    <% teams.forEach(team => { %>
+                      <option value="<%= team._id %>" <%= query.team === team._id.toString() ? 'selected' : '' %>><%= team.name %></option>
+                    <% }); %>
+                  <% } %>
+                </select>
+              </div>
+            <% } %>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label for="min_price" class="form-label">Min Price</label>
+              <input type="number" class="form-control" id="min_price" name="min_price" value="<%= query.min_price || '' %>">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="max_price" class="form-label">Max Price</label>
+              <input type="number" class="form-control" id="max_price" name="max_price" value="<%= query.max_price || '' %>">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="min_sold" class="form-label">Min Sold</label>
+              <input type="number" class="form-control" id="min_sold" name="min_sold" value="<%= query.min_sold || '' %>">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="max_sold" class="form-label">Max Sold</label>
+              <input type="number" class="form-control" id="max_sold" name="max_sold" value="<%= query.max_sold || '' %>">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <label for="isCreatedVideo" class="form-label">Video Created</label>
+              <select class="form-select" id="isCreatedVideo" name="isCreatedVideo">
+                <option value="">All</option>
+                <option value="true" <%= query.isCreatedVideo === 'true' ? 'selected' : '' %>>Yes</option>
+                <option value="false" <%= query.isCreatedVideo === 'false' ? 'selected' : '' %>>No</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="statusUpVideo" class="form-label">Video Status</label>
+              <select class="form-select" id="statusUpVideo" name="statusUpVideo">
+                <option value="">All Status</option>
+                <option value="No_Info" <%= query.statusUpVideo === 'No_Info' ? 'selected' : '' %>>No_Info</option>
+                <option value="Processing" <%= query.statusUpVideo === 'Checking' ? 'selected' : '' %>>Đang Check</option>
+                <option value="Checked" <%= query.statusUpVideo === 'Checked' ? 'selected' : '' %>>Đã Check</option>
+                <option value="Processing" <%= query.statusUpVideo === 'Creating' ? 'selected' : '' %>>Đang Tạo Video</option>
+                <option value="Created" <%= query.statusUpVideo === 'Created' ? 'selected' : '' %>>Đã Tạo Video</option>
+                <option value="Uploaded" <%= query.statusUpVideo === 'Uploaded' ? 'selected' : '' %>>Đã Upload Video</option>
+                <option value="Error" <%= query.statusUpVideo === 'Fail' ? 'selected' : '' %>>Fail</option>
+              </select>
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="min_rating_star" class="form-label">Min Rating</label>
+              <input type="number" step="0.1" class="form-control" id="min_rating_star" name="min_rating_star" value="<%= query.min_rating_star || '' %>">
+            </div>
+            <div class="col-md-3 mb-3">
+              <label for="max_rating_star" class="form-label">Max Rating</label>
+              <input type="number" step="0.1" class="form-control" id="max_rating_star" name="max_rating_star" value="<%= query.max_rating_star || '' %>">
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-12">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-search"></i> Search
+              </button>
+              <a href="/products" class="btn btn-secondary">
+                <i class="fas fa-undo"></i> Clear
+              </a>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table Controls -->
+  <div class="surface-card">
+    <div class="surface-card-body">
+      <div class="toolbar-wrap">
+        <div class="toolbar-group">
+        <label for="pageSize" class="me-2 mb-0">Show:</label>
+        <select class="form-select form-select-sm" id="pageSize" name="pageSize" style="width: auto;">
+          <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          <option value="200" <%= limit === 200 ? 'selected' : '' %>>200</option>
+          <option value="500" <%= limit === 500 ? 'selected' : '' %>>500</option>
+          <option value="1000" <%= limit === 1000 ? 'selected' : '' %>>1000</option>
+        </select>
+        <span class="ms-2 text-muted">entries</span>
+        </div>
+        <div class="toolbar-group">
+          <button type="button" class="btn btn-danger btn-sm me-2" id="deleteSelectedBtn" disabled>
+            <i class="fas fa-trash" aria-hidden="true"></i> Delete Selected
+          </button>
+          <small class="table-note">
+            Showing <%= ((currentPage - 1) * limit) + 1 %> to <%= Math.min(currentPage * limit, totalItems) %> of <%= totalItems %> entries
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="surface-card sticky-summary">
+    <div class="surface-card-body">
+      <div class="summary-pills">
+        <span class="summary-pill">Tổng <strong id="summaryTotal">...</strong></span>
+        <span class="summary-pill">No_Info <strong id="summaryNoInfo">...</strong></span>
+        <span class="summary-pill">Checking <strong id="summaryChecking">...</strong></span>
+        <span class="summary-pill">Checked <strong id="summaryChecked">...</strong></span>
+        <span class="summary-pill">Created <strong id="summaryCreated">...</strong></span>
+        <span class="summary-pill">Uploaded <strong id="summaryUploaded">...</strong></span>
+      </div>
+      <div class="toolbar-group mt-3">
+        <form method="POST" action="/products/handle-status" class="mb-0">
+          <input type="hidden" name="action" value="checking_to_no_info">
+          <% if (query.team) { %>
+            <input type="hidden" name="team" value="<%= query.team %>">
+          <% } %>
+          <button
+            type="submit"
+            class="btn btn-sm btn-outline-warning"
+            onclick="return confirm('Chuẩn hóa lỗi Checking -> No_Info?')"
+          >
+            Chuẩn hóa lỗi Checking → No_Info
+          </button>
+        </form>
+        <form method="POST" action="/products/handle-status" class="mb-0">
+          <input type="hidden" name="action" value="creating_to_checked">
+          <% if (query.team) { %>
+            <input type="hidden" name="team" value="<%= query.team %>">
+          <% } %>
+          <button
+            type="submit"
+            class="btn btn-sm btn-outline-primary"
+            onclick="return confirm('Chuẩn hóa lỗi Creating -> Checked?')"
+          >
+            Chuẩn hóa lỗi Creating → Checked
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Products Table -->
+  <div class="card surface-card data-table-card">
+    <div class="card-header">
+      <div class="section-heading">
+        <div>
+          <h5><i class="fas fa-table" aria-hidden="true"></i> Products List</h5>
+          <p><%= totalItems %> sản phẩm trong danh sách hiện tại.</p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover table-striped mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th width="3%" class="text-center">
+                <input type="checkbox" id="selectAllProducts" class="form-check-input">
+              </th>
+              <th width="3%">#</th>
+              <th width="5%">Item ID</th>
+              <th width="5%">Shop ID</th>
+              <th width="25%">Name</th>
+              <th width="8%">Rating</th>
+              <th width="4%">Shop Rating</th>
+              <th width="8%">Price</th>
+              <th width="5%">Sold</th>
+              <th width="5%">Commission (VNĐ)</th>
+              <th width="5%">Commission (%)</th>
+              <th width="5%">Team</th>
+              <th width="8%">Image</th>
+              <th width="8%">Video Created</th>
+              <th width="8%">Video Status</th>
+              <th width="8%">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (products && products.length > 0) { %>
+              <% products.forEach((product, index) => { %>
+                <tr>
+                  <td class="text-center">
+                    <input type="checkbox" class="form-check-input product-checkbox" value="<%= product._id %>">
+                  </td>
+                  <td><%= ((currentPage - 1) * limit) + index + 1 %></td>
+                  <td>
+                    <span class="text-muted"><%= product.item_id %></span>
+                  </td>
+                  <td><%= product.shop_id %></td>
+                  <td>
+                    <div class="text-truncate" style="max-width: 300px;" title="<%= product.name %>">
+                      <%= product.name %>
+                    </div>
+                  </td>
+                  <td>
+                    <% if (product.rating_star) { %>
+                      <span class="badge bg-warning text-dark">
+                        <%= product.rating_star.toFixed(1) %> <i class="fas fa-star"></i>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (product.shop_rating) { %>
+                      <span class="badge bg-primary">
+                        <%= product.shop_rating.toFixed(1) %> <i class="fas fa-star"></i>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="text-success fw-bold">
+                      <%= formatPrice(product.price) %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-info">
+                      <%= product.sold.toLocaleString() %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if (product.commission_rate) { %>
+                      <span class="badge bg-success">
+                        <%= formatPriceDefault(product.commission_rate) %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (product.default_commission_rate) { %>
+                      <span class="badge bg-warning text-dark">
+                        <%= product.default_commission_rate %> <i class="fas fa-percentage"></i>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (product.team) { %>
+                      <span class="badge bg-secondary"><%= product.team.name || 'Team' %></span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (product.bestImageUrl) { %>
+                      <img src="<%= product.bestImageUrl %>" alt="Ảnh sản phẩm" width="52" height="52" class="app-table-thumb" style="cursor: pointer;" 
+                           onclick="window.open('<%= product.bestImageUrl %>', '_blank')" title="Click to view full image">
+                    <% } else { %>
+                      <div class="app-table-thumb-placeholder">
+                        <i class="fas fa-image" aria-hidden="true" style="font-size: 18px;"></i>
+                      </div>
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="badge <%= product.statusUpVideo === 'No_Info' ? 'bg-secondary' : 
+                                         product.statusUpVideo === 'Đã upload' ? 'bg-success' : 
+                                         product.statusUpVideo === 'Đang xử lý' ? 'bg-warning text-dark' : 
+                                         product.statusUpVideo === 'Lỗi' ? 'bg-danger' : 
+                                         'bg-secondary' %>">
+                      <%= product.statusUpVideo %>
+                    </span>
+                  </td>
+                   <td>
+                    <% if (product.isCreatedVideo) { %>
+                      <span class="badge bg-success">Yes</span>
+                    <% } else { %>
+                      <span class="badge bg-secondary">No</span>
+                    <% } %>
+                  </td>
+                 
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <a href="<%= product.product_link %>" target="_blank" class="btn btn-outline-primary" title="View on Shopee">
+                        <i class="fas fa-external-link-alt"></i>
+                      </a>
+                      <button class="btn btn-outline-warning" data-bs-toggle="modal" data-bs-target="#editProductModal" 
+                              data-id="<%= product._id %>" title="Edit">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr>
+                <td colspan="16">
+                  <div class="empty-state">
+                    <i class="fas fa-inbox" aria-hidden="true"></i>
+                    <p class="mb-0">Không có sản phẩm khớp với bộ lọc hiện tại.</p>
+                  </div>
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if (pagination && pagination.totalPages > 1) { %>
+    <nav aria-label="Page navigation" class="mt-4">
+      <ul class="pagination justify-content-center">
+        <!-- Previous button -->
+        <li class="page-item <%= pagination.hasPrevPage ? '' : 'disabled' %>">
+          <a class="page-link" href="<%= pagination.hasPrevPage ? buildQueryString(pagination.prevPage) : '#' %>" tabindex="-1">
+            <i class="fas fa-chevron-left"></i>
+          </a>
+        </li>
+        
+        <!-- Page numbers -->
+        <% pagination.pages.forEach(page => { %>
+          <% if (page === '...') { %>
+            <li class="page-item disabled">
+              <span class="page-link">...</span>
+            </li>
+          <% } else { %>
+            <li class="page-item <%= page === pagination.currentPage ? 'active' : '' %>">
+              <a class="page-link" href="<%= buildQueryString(page) %>"><%= page %></a>
+            </li>
+          <% } %>
+        <% }); %>
+        
+        <!-- Next button -->
+        <li class="page-item <%= pagination.hasNextPage ? '' : 'disabled' %>">
+          <a class="page-link" href="<%= pagination.hasNextPage ? buildQueryString(pagination.nextPage) : '#' %>">
+            <i class="fas fa-chevron-right"></i>
+          </a>
+        </li>
+      </ul>
+    </nav>
+  <% } %>
+
+  <div class="modal fade" id="importResultsModal" tabindex="-1" aria-labelledby="importResultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importResultsModalLabel">Kết quả import sản phẩm</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="importResultsContent"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- contentFor('extraScripts') %>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+  $(document).ready(function() {
+    function loadProductsSummary() {
+      const params = new URLSearchParams(window.location.search);
+      const team = params.get('team');
+      const query = new URLSearchParams();
+      if (team) {
+        query.set('team', team);
+      }
+      const endpoint = '/products/summary' + (query.toString() ? `?${query.toString()}` : '');
+
+      $.ajax({
+        url: endpoint,
+        type: 'GET',
+        success: function(response) {
+          if (!response || !response.success || !response.data) {
+            return;
+          }
+          const data = response.data;
+          $('#summaryTotal').text((data.total || 0).toLocaleString());
+          $('#summaryNoInfo').text((data.noInfo || 0).toLocaleString());
+          $('#summaryChecking').text((data.checking || 0).toLocaleString());
+          $('#summaryChecked').text((data.checked || 0).toLocaleString());
+          $('#summaryCreated').text((data.created || 0).toLocaleString());
+          $('#summaryUploaded').text((data.uploaded || 0).toLocaleString());
+        },
+        error: function() {
+          $('#summaryTotal, #summaryNoInfo, #summaryChecking, #summaryChecked, #summaryCreated, #summaryUploaded').text('N/A');
+        }
+      });
+    }
+    loadProductsSummary();
+
+    // Auto-submit form when dropdown changes
+    $('select:not(#pageSize):not(#importTeam)').on('change', function() {
+      $('#filterForm').submit();
+    });
+    // Handle page size change
+    $('#pageSize').on('change', function() {
+      const params = new URLSearchParams(window.location.search);
+      params.set('limit', $(this).val());
+      params.set('page', '1');
+      window.location.href = '/products?' + params.toString();
+    });
+
+    function updateSelectionState() {
+      const total = $('.product-checkbox').length;
+      const checked = $('.product-checkbox:checked').length;
+      $('#deleteSelectedBtn').prop('disabled', checked === 0);
+      $('#selectAllProducts').prop('checked', total > 0 && checked === total);
+      $('#selectAllProducts').prop('indeterminate', checked > 0 && checked < total);
+    }
+
+    $('#selectAllProducts').on('change', function() {
+      $('.product-checkbox').prop('checked', $(this).is(':checked'));
+      updateSelectionState();
+    });
+
+    $(document).on('change', '.product-checkbox', function() {
+      updateSelectionState();
+    });
+
+    $('#deleteSelectedBtn').on('click', function() {
+      const selectedIds = $('.product-checkbox:checked').map(function() {
+        return $(this).val();
+      }).get();
+
+      if (!selectedIds.length) {
+        showNotification('Vui lòng chọn ít nhất 1 product để xóa', 'warning');
+        return;
+      }
+
+      if (!confirm(`Xóa ${selectedIds.length} product đã chọn?`)) {
+        return;
+      }
+
+      const $form = $('<form method="POST" action="/products/delete-selected"></form>');
+      selectedIds.forEach(function(id) {
+        $form.append(`<input type="hidden" name="ids" value="${id}">`);
+      });
+      $('body').append($form);
+      $form.trigger('submit');
+    });
+
+    // Handle filter collapse icon rotation
+    $('#filtersCollapse').on('show.bs.collapse', function() {
+      $('#filterIcon').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+    }).on('hide.bs.collapse', function() {
+      $('#filterIcon').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+    });
+
+    // Simple notification function
+    function showNotification(message, type = 'success') {
+      const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : 'alert-warning';
+      const icon = type === 'success' ? 'fa-check' : type === 'error' ? 'fa-times' : 'fa-exclamation-triangle';
+      
+      const notification = $(`
+        <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+             style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+          <i class="fas ${icon}"></i> ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      `);
+      
+      $('body').append(notification);
+      
+      setTimeout(() => {
+        notification.alert('close');
+      }, 3000);
+    }
+
+    // Import handler with detailed results
+    $('#importSubmitBtn').on('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const $btn = $(this);
+      const productLinks = $('#productLinks').val().trim();
+      const importTeam = $("#importTeam").val() ?? $("#importTeamDefault").val();
+      const originalText = $btn.html();
+      
+      if (!productLinks) {
+        showNotification('Please enter product links', 'warning');
+        return;
+      }
+      
+      if (!importTeam) {
+        showNotification('Please select a team', 'warning');
+        return;
+      }
+      
+      console.log({team: importTeam, productLinks: productLinks})
+      
+      // Show loading state
+      $btn.html('<i class="fas fa-spinner fa-spin"></i> Importing...').prop('disabled', true);
+      
+      // Make AJAX request
+      $.ajax({
+        url: '/products/import-links',
+        type: 'POST',
+        data: {
+          team: importTeam,
+          productLinks: productLinks
+        },
+        success: function(data) {
+          if (data.success) {
+            const results = data.data;
+            
+            // Show notification
+            const summaryMessage = `Import completed: ${results.imported} success, ${results.skipped} duplicates, ${results.errors} errors`;
+            showNotification(summaryMessage, results.errors > 0 ? 'warning' : 'success');
+            
+            // Show detailed results in modal
+            if (results.details && results.details.length > 0) {
+              displayImportResults(results);
+            }
+            
+            // Clear form
+            $('#productLinks').val('');
+            $('#importTeam').val('');
+          } else {
+            throw new Error(data.message || 'Import failed');
+          }
+        },
+        error: function(xhr) {
+          const errorMessage = xhr.responseJSON?.message || 'Import failed';
+          showNotification(errorMessage, 'error');
+        },
+        complete: function() {
+          $btn.html(originalText).prop('disabled', false);
+        }
+      });
+    });
+    
+    // Function to display import results in modal
+    function displayImportResults(results) {
+      const successItems = results.details.filter(d => d.status === 'imported');
+      const skippedItems = results.details.filter(d => d.status === 'skipped');
+      const errorItems = results.details.filter(d => d.status === 'error');
+      
+      let resultsHtml = `
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <div class="card border-success">
+              <div class="card-body text-center">
+                <h5 class="text-success">${results.imported}</h5>
+                <p class="mb-0">Imported</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-warning">
+              <div class="card-body text-center">
+                <h5 class="text-warning">${results.skipped}</h5>
+                <p class="mb-0">Duplicates</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card border-danger">
+              <div class="card-body text-center">
+                <h5 class="text-danger">${results.errors}</h5>
+                <p class="mb-0">Errors</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      if (successItems.length > 0) {
+        resultsHtml += `
+          <h6 class="text-success mb-2">Imported Successfully:</h6>
+          <div class="mb-3" style="max-height: 150px; overflow-y: auto;">
+            ${successItems.map(item => `<div class="text-success small">✓ ${item.link}</div>`).join('')}
+          </div>
+        `;
+      }
+      
+      if (skippedItems.length > 0) {
+        resultsHtml += `
+          <h6 class="text-warning mb-2">Duplicates Skipped:</h6>
+          <div class="mb-3" style="max-height: 150px; overflow-y: auto;">
+            ${skippedItems.map(item => `<div class="text-warning small">⚠ ${item.link}</div>`).join('')}
+          </div>
+        `;
+      }
+      
+      if (errorItems.length > 0) {
+        resultsHtml += `
+          <h6 class="text-danger mb-2">Errors:</h6>
+          <div class="mb-3" style="max-height: 150px; overflow-y: auto;">
+            ${errorItems.map(item => `<div class="text-danger small">✗ ${item.link}<br><small>${item.error}</small></div>`).join('')}
+          </div>
+        `;
+      }
+      
+      $('#importResultsContent').html(resultsHtml);
+      $('#importResultsModal').modal('show');
+    }
+    updateSelectionState();
+  });
+</script> 

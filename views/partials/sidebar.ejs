@@ -1,0 +1,500 @@
+<div class="sidebar" id="sidebar" style="height: 100vh; position: fixed; top: 0; left: 0; z-index: 1000;">
+  <div class="sidebar-header">
+    <img src="/images/logo-modern.svg" alt="Logo" class="logo">
+    <h3>Shopee Tool</h3>
+    <button id="toggleSidebar" class="toggle-btn" type="button" aria-label="Thu gọn hoặc mở rộng thanh điều hướng">
+      <i class="fas fa-bars" aria-hidden="true"></i>
+    </button>
+  </div>
+  <nav class="sidebar-menu" aria-label="Điều hướng chính">
+    <div class="menu-group">
+      <a href="/dashboard" class="menu-item-header <%= locals.activePage === 'dashboard' ? 'active' : '' %>">
+        <i class="fas fa-chart-line" aria-hidden="true"></i>
+        <span>Dashboard</span>
+      </a>
+    </div>
+   <% const WEB_PRO = Number(locals.WEB_PRO ?? 1); %>
+    <% if (WEB_PRO !== 1) { %>
+    <div class="menu-group">
+      <a href="/shopee-accounts/upload-video" class="menu-item-header <%= locals.activePage === 'shopee-accounts-upload-video' ? 'active' : '' %>">
+        <i class="fas fa-video" aria-hidden="true"></i>
+        <span>Accounts Upload Video</span>
+      </a>
+    </div>
+    <% } %>
+    <% if (WEB_PRO !== 0) { %>
+    <div class="menu-group">
+      <a href="/shopee-accounts/video-upload-manager" class="menu-item-header <%= locals.activePage === 'video-upload-manager' ? 'active' : '' %>">
+        <i class="fas fa-photo-film" aria-hidden="true"></i>
+        <span>Video Upload Manager</span>
+      </a>
+    </div>
+    <% } %>
+    <!-- For products if it only has one submenu item -->
+    <% if (locals.user && (locals.user.role === 'admin' || locals.user.role === 'super_admin')) { %>
+    <div class="menu-group">
+      <button
+        type="button"
+        class="menu-item-header menu-toggle <%= locals.activePage && locals.activePage.startsWith('admin') ? 'active' : '' %>"
+        aria-expanded="<%= locals.activePage && locals.activePage.startsWith('admin') ? 'true' : 'false' %>"
+        aria-controls="admin-submenu">
+        <i class="fas fa-user-shield" aria-hidden="true"></i>
+        <span>Quản trị</span>
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+      </button>
+      <div class="submenu" id="admin-submenu">
+
+
+        <a href="/admin/accounts" class="submenu-item <%= locals.activePage === 'admin-accounts' ? 'active' : '' %>" <%= locals.activePage === 'admin-accounts' ? 'aria-current="page"' : '' %>>
+          <i class="fas fa-user-cog" aria-hidden="true"></i>
+          <span>Quản lý tài khoản</span>
+        </a>
+        <a href="/admin/teams" class="submenu-item <%= locals.activePage === 'admin-teams' ? 'active' : '' %>" <%= locals.activePage === 'admin-teams' ? 'aria-current="page"' : '' %>>
+          <i class="fas fa-users-cog" aria-hidden="true"></i>
+          <span>Quản lý Team</span>
+        </a>
+
+
+
+      </div>
+    </div>
+    <% } %>
+    <% if(locals.user && locals.user.role==='super_admin' ) { %>
+    <div class="menu-group">
+      <a href="/admin/license-keys" class="submenu-item <%= locals.activePage === 'admin-license-keys' ? 'active' : '' %>" <%= locals.activePage === 'admin-license-keys' ? 'aria-current="page"' : '' %>>
+        <i class="fas fa-key" aria-hidden="true"></i>
+        <span>Quản lý License Key</span>
+      </a>
+    </div>
+    <% } %>
+    <!-- Fix for Thống kê doanh thu menu item --
+    
+    <!-- Revenue Statistics menu item -->
+    <div class="menu-group">
+      <a href="/revenue-stats" class="menu-item-header <%= locals.activePage === 'revenue-stats' ? 'active' : '' %>" <%= locals.activePage === 'revenue-stats' ? 'aria-current="page"' : '' %>>
+        <i class="fas fa-money-bill-wave" aria-hidden="true"></i>
+        <span>Doanh thu theo ngày</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="/logout" class="logout-btn">
+      <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+      <span style="color: #ffffff;">Đăng xuất</span>
+    </a>
+  </div>
+</div>
+
+<style>
+  :root {
+    --sidebar-width: 230px;
+    --sidebar-collapsed-width: 64px;
+    --sidebar-bg-start: #ff6a3d;
+    --sidebar-bg-end: #ee4d2d;
+    --sidebar-text: #fff8f4;
+    --sidebar-text-muted: rgba(255, 248, 244, 0.78);
+    --sidebar-item-hover: rgba(255, 255, 255, 0.14);
+    --sidebar-item-active: rgba(255, 255, 255, 0.2);
+    --sidebar-border: rgba(255, 255, 255, 0.16);
+  }
+
+  .sidebar {
+    width: var(--sidebar-width);
+    height: 100vh;
+    background: linear-gradient(180deg, var(--sidebar-bg-start) 0%, var(--sidebar-bg-end) 100%);
+    color: var(--sidebar-text);
+    position: fixed;
+    left: 0;
+    top: 0;
+    transition: width 0.25s ease, transform 0.25s ease;
+    z-index: 1000;
+    overflow: hidden;
+    visibility: visible;
+    opacity: 1;
+    font-size: 12px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.2);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sidebar.collapsed {
+    width: var(--sidebar-collapsed-width);
+  }
+
+  .sidebar:not(.initialized) {
+    visibility: hidden;
+  }
+
+  .sidebar.initialized {
+    visibility: visible;
+  }
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: sticky;
+    top: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+    backdrop-filter: blur(5px);
+    z-index: 3;
+  }
+
+  .logo {
+    width: 34px;
+    height: 34px;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #ffffff;
+    padding: 4px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    flex-shrink: 0;
+  }
+
+  .sidebar-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .toggle-btn {
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: var(--sidebar-text);
+    font-size: 13px;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    transition: background-color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .toggle-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .toggle-btn:focus-visible,
+  .menu-item-header:focus-visible,
+  .submenu-item:focus-visible,
+  .logout-btn:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.35);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
+  }
+
+  .sidebar-menu {
+    padding: 12px 10px 90px;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .menu-group {
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .menu-item-header,
+  .submenu-item {
+    padding: 9px 11px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--sidebar-text);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+
+  button.menu-item-header {
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    text-align: left;
+  }
+
+  .menu-item-header {
+    font-weight: 600;
+  }
+
+  .submenu-item {
+    color: var(--sidebar-text-muted);
+    margin-top: 5px;
+    padding-left: 34px;
+    font-size: 11.5px;
+  }
+
+  .menu-item-header:hover,
+  .submenu-item:hover {
+    background: var(--sidebar-item-hover);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .menu-item-header.active,
+  .submenu-item.active {
+    background: var(--sidebar-item-active);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .menu-item-header i:first-child,
+  .submenu-item i {
+    width: 16px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .fa-chevron-right {
+    margin-left: auto;
+    font-size: 10px;
+    opacity: 0.8;
+    transition: transform 0.2s ease;
+  }
+
+  .menu-group:hover .fa-chevron-right {
+    transform: translateX(1px);
+  }
+
+  .submenu {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    padding-left: 2px;
+    margin-top: 4px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .menu-group:has(.submenu-item.active) .submenu,
+  .menu-group:hover .submenu {
+    max-height: 240px;
+  }
+
+  .menu-toggle[aria-expanded="true"] .fa-chevron-right {
+    transform: rotate(90deg);
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    border-top: 1px solid var(--sidebar-border);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.14));
+    backdrop-filter: blur(4px);
+    padding: 8px 10px;
+  }
+
+  .logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 11px;
+    text-decoration: none;
+    color: var(--sidebar-text);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    border-radius: 10px;
+    border: 1px solid transparent;
+  }
+
+  .logout-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  .sidebar.collapsed .sidebar-header h3,
+  .sidebar.collapsed .menu-item-header span,
+  .sidebar.collapsed .submenu-item span,
+  .sidebar.collapsed .logout-btn span,
+  .sidebar.collapsed .sidebar-header .logo {
+    display: none;
+  }
+
+  .sidebar.collapsed .menu-item-header,
+  .sidebar.collapsed .submenu-item,
+  .sidebar.collapsed .logout-btn {
+    justify-content: center;
+    gap: 0;
+    padding: 10px 0;
+  }
+
+  .sidebar.collapsed .fa-chevron-right {
+    display: none;
+  }
+
+  .sidebar.collapsed .submenu {
+    position: absolute;
+    left: calc(var(--sidebar-collapsed-width) - 4px);
+    top: 0;
+    width: 190px;
+    max-height: none;
+    background: linear-gradient(180deg, var(--sidebar-bg-start) 0%, var(--sidebar-bg-end) 100%);
+    color: var(--sidebar-text);
+    display: none;
+    border-radius: 12px;
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 8px;
+    z-index: 9;
+  }
+
+  .sidebar.collapsed .submenu-item {
+    color: var(--sidebar-text-muted);
+    padding: 8px 10px;
+    margin-top: 4px;
+  }
+
+  .sidebar.collapsed .submenu-item:hover,
+  .sidebar.collapsed .submenu-item.active {
+    background: var(--sidebar-item-hover);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+  }
+
+  .sidebar.collapsed .menu-group:hover .submenu {
+    display: block;
+  }
+
+  .sidebar.collapsed .logo {
+    margin-right: 0;
+  }
+
+  .main-content {
+    margin-left: var(--sidebar-width);
+    transition: margin-left 0.25s ease;
+  }
+
+  body.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+
+  @media (max-width: 768px) {
+    .sidebar {
+      left: calc(var(--sidebar-width) * -1);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+
+    .sidebar.show {
+      left: 0;
+    }
+
+    .sidebar.collapsed {
+      left: calc(var(--sidebar-collapsed-width) * -1);
+      width: var(--sidebar-collapsed-width);
+    }
+
+    .sidebar.collapsed.show {
+      left: 0;
+    }
+
+    .main-content,
+    body.sidebar-collapsed .main-content {
+      margin-left: 0;
+    }
+  }
+</style>
+
+<script>
+  // Apply sidebar state immediately to prevent flickering
+  (function() {
+    const sidebar = document.getElementById('sidebar');
+    const body = document.body;
+    const toggleButton = document.getElementById('toggleSidebar');
+
+    // Check if sidebar state is saved in localStorage
+    const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+    // Apply saved state immediately before DOM loads
+    if (sidebarCollapsed) {
+      sidebar.classList.add('collapsed');
+      body.classList.add('sidebar-collapsed');
+    }
+
+    if (toggleButton) {
+      toggleButton.setAttribute('aria-expanded', sidebarCollapsed ? 'false' : 'true');
+    }
+
+    // Add initialized class to show sidebar after state is applied
+    sidebar.classList.add('initialized');
+  })();
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebar');
+    const toggleBtn = document.getElementById('toggleSidebar');
+    const body = document.body;
+    const menuToggles = document.querySelectorAll('.menu-toggle');
+
+    toggleBtn.addEventListener('click', function() {
+      sidebar.classList.toggle('collapsed');
+      body.classList.toggle('sidebar-collapsed');
+      this.setAttribute('aria-expanded', sidebar.classList.contains('collapsed') ? 'false' : 'true');
+
+      // Save state to localStorage
+      localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+    });
+
+    menuToggles.forEach(toggle => {
+      toggle.addEventListener('click', function() {
+        const expanded = this.getAttribute('aria-expanded') === 'true';
+        this.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+
+        const submenu = document.getElementById(this.getAttribute('aria-controls'));
+        if (!submenu) return;
+
+        if (expanded) {
+          submenu.style.maxHeight = null;
+        } else {
+          submenu.style.maxHeight = submenu.scrollHeight + 'px';
+        }
+      });
+    });
+
+    const expandedMenu = document.querySelector('.menu-toggle[aria-expanded="true"]');
+    if (expandedMenu) {
+      const expandedSubmenu = document.getElementById(expandedMenu.getAttribute('aria-controls'));
+      if (expandedSubmenu) {
+        expandedSubmenu.style.maxHeight = expandedSubmenu.scrollHeight + 'px';
+      }
+    }
+
+    // For mobile: close sidebar when clicking outside
+    document.addEventListener('click', function(event) {
+      const isMobile = window.innerWidth <= 768;
+      if (isMobile && !sidebar.contains(event.target) && !sidebar.classList.contains('collapsed')) {
+        sidebar.classList.add('collapsed');
+        body.classList.add('sidebar-collapsed');
+        toggleBtn.setAttribute('aria-expanded', 'false');
+        localStorage.setItem('sidebarCollapsed', 'true');
+      }
+    });
+
+    // Handle submenu in collapsed mode for desktop
+    const menuGroups = document.querySelectorAll('.menu-group');
+    menuGroups.forEach(group => {
+      const submenu = group.querySelector('.submenu');
+      if (submenu) {
+        group.addEventListener('mouseenter', function() {
+          if (sidebar.classList.contains('collapsed')) {
+            const groupRect = group.getBoundingClientRect();
+            submenu.style.top = groupRect.top + 'px';
+          }
+        });
+      }
+    });
+  });
+</script>

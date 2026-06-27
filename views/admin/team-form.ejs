@@ -1,0 +1,92 @@
+<div class="container-fluid">
+  <h1 class="mb-4"><%= team._id ? 'Chỉnh sửa Team' : 'Tạo Team mới' %></h1>
+  
+  <div class="card">
+    <div class="card-body">
+      <form id="teamForm" method="POST" action="<%= team._id ? `/admin/teams/${team._id}` : '/admin/teams' %>">
+        <% if (team._id) { %>
+          <input type="hidden" name="_method" value="PUT">
+        <% } %>
+        
+        <div class="mb-3">
+          <label for="name" class="form-label">Tên Team</label>
+          <input type="text" class="form-control" id="name" name="name" value="<%= team.name || '' %>" required>
+        </div>
+        
+        <div class="mb-3">
+          <label for="description" class="form-label">Mô tả</label>
+          <textarea class="form-control" id="description" name="description" rows="3"><%= team.description || '' %></textarea>
+        </div>
+        
+        <% if (team._id) { %>
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="active" name="active" <%= team.active ? 'checked' : '' %>>
+              <label class="form-check-label" for="active">
+                Hoạt động
+              </label>
+            </div>
+          </div>
+        <% } %>
+        
+        <div class="d-flex justify-content-between">
+          <a href="/admin/teams" class="btn btn-secondary">Hủy</a>
+          <button type="submit" class="btn btn-primary">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const teamForm = document.getElementById('teamForm');
+    
+    teamForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(teamForm);
+      const data = {};
+      
+      formData.forEach((value, key) => {
+        if (key === 'active') {
+          data[key] = true;
+        } else {
+          data[key] = value;
+        }
+      });
+      
+      // If active checkbox is not checked but exists in the form
+      if (document.getElementById('active') && !formData.has('active')) {
+        data.active = false;
+      }
+      
+      // Handle PUT method
+      let method = 'POST';
+      if (formData.get('_method') === 'PUT') {
+        method = 'PUT';
+      }
+      
+      fetch(teamForm.getAttribute('action'), {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(method === 'POST' ? 'Tạo team thành công' : 'Cập nhật team thành công');
+          window.location.href = '/admin/teams';
+        } else {
+          alert('Lỗi: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Đã xảy ra lỗi khi lưu team');
+      });
+    });
+  });
+</script>
