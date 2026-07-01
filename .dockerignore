@@ -1,3 +1,14 @@
 node_modules
 npm-debug.log
 .env
+.git
+.gitignore
+Dockerfile*
+deploy/
+k8s/
+coverage/
+logs/
+*.log
+uploads/
+.vscode/
+.DS_Store
